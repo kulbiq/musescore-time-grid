@@ -30,6 +30,7 @@ ExtensionBlank {
     ]
 
     function clock(sec) {
+        sec = Math.round(sec * 1000) / 1000;   // so 59.9996 s shows as 1:00.000, not 0:60.000
         var m = Math.floor(sec / 60);
         var s = (sec - m * 60).toFixed(3);
         return m + ":" + (s < 10 ? "0" : "") + s;

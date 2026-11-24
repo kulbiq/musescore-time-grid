@@ -62,33 +62,33 @@ function staffTop(eng, sys, staff) {
 // Returns { aligned, firstBar, lastBar }: whether it worked, and the bars it spans.
 function alignImage(eng, img, barCount) {
     var score = eng.curScore;
-    score.startCmd("Align image");
-    // Take the image out of automatic placement before measuring anything. While it takes part,
-    // it counts as part of its note, pushes the following notes out from under it and can even
-    // push bars to the next line.
-    img.autoplace = false;
-    if (!img.sizeIsSpatium) {
-        img.sizeIsSpatium = true;
-    }
-    img.lockAspectRatio = true;
-    layoutAll(eng);
+    return inCommand(score, "Align image", function () {
+        // Take the image out of automatic placement before measuring anything. While it takes part,
+        // it counts as part of its note, pushes the following notes out from under it and can even
+        // push bars to the next line.
+        img.autoplace = false;
+        if (!img.sizeIsSpatium) {
+            img.sizeIsSpatium = true;
+        }
+        img.lockAspectRatio = true;
+        layoutAll(eng);
 
-    var m = anchorMeasure(eng, img), bar = barNumber(score, m), line = systemBars(score, m);
-    var first = barCount ? bar : line.firstBar;
-    var last = barCount ? Math.min(bar + barCount - 1, line.lastBar) : line.lastBar;
-    var sys = collect(eng, barsRange(score, first, last))[0];
-    var p = sys ? sys.points : [], top = sys ? staffTop(eng, sys, img.staffIdx) : null;
-    var result = { aligned: false, firstBar: first, lastBar: last };
-    if (p.length >= 2 && top !== null) {
-        // where the image's anchor is: its page position without the offset
-        var px = img.pagePos.x - img.offsetX, py = img.pagePos.y - img.offsetY;
-        img.imageWidth = p[p.length - 1].x - p[0].x;
-        img.offsetX = p[0].x - px;
-        img.offsetY = top - IMAGE_GAP - img.imageHeight - py;
-        result.aligned = true;
-    }
-    score.endCmd();
-    return result;
+        var m = anchorMeasure(eng, img), bar = barNumber(score, m), line = systemBars(score, m);
+        var first = barCount ? bar : line.firstBar;
+        var last = barCount ? Math.min(bar + barCount - 1, line.lastBar) : line.lastBar;
+        var sys = collect(eng, barsRange(score, first, last))[0];
+        var p = sys ? sys.points : [], top = sys ? staffTop(eng, sys, img.staffIdx) : null;
+        var result = { aligned: false, firstBar: first, lastBar: last };
+        if (p.length >= 2 && top !== null) {
+            // where the image's anchor is: its page position without the offset
+            var px = img.pagePos.x - img.offsetX, py = img.pagePos.y - img.offsetY;
+            img.imageWidth = p[p.length - 1].x - p[0].x;
+            img.offsetX = p[0].x - px;
+            img.offsetY = top - IMAGE_GAP - img.imageHeight - py;
+            result.aligned = true;
+        }
+        return result;
+    });
 }
 
 // Takes the images on notes, rests and bars in range { t0, t1 } out of automatic placement.

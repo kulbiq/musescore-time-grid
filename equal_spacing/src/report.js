@@ -49,7 +49,7 @@ function describe(eng, range) {
 // The status line after Make linear, from the { error, failed } that linearize returns.
 function resultMessage(eng, result) {
     if (result.failed.length) {
-        return tr("Could not make these bars linear, they are unchanged: %1.",
+        return tr("Could not make these bars linear: %1.",
                   result.failed.map(function (f) { return barsLabel(f.firstBar, f.lastBar); }).join(", "));
     }
     var off = (result.error * mmPerSpatium(eng.curScore)).toFixed(2);

@@ -35,7 +35,7 @@ The checkbox "Keep bars on their line" decides what happens then.
   Notes, accidentals, barlines and time or key signatures may run into each other: the barline may go right up to the note before it, and the downbeat right up to the barline.
   This never gives up on a system: MuseScore keeps a barline a few tenths of a staff space after the note before it, so in the densest spots a note can stay a few hundredths of a millimetre off the grid, and the dialog says how much.
 
-Systems that cannot be made linear with bars moving are left unchanged and named in the dialog.
+Systems that cannot be made linear with bars moving are named in the dialog and keep no spacing adjustments.
 
 Time signature, key and clef changes, clef changes inside a bar, start and end repeats and accidentals in the middle of a line are taken into account: the barline, the signatures and the downbeat after them move together, and the downbeat stays on the grid.
 With bars moving, they keep their usual distances, and a line only gives up bars when they really do not fit.

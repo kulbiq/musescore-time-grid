@@ -23,6 +23,21 @@ var PASSES = 4;            // whole-system passes before falling back to sweeps
 var MAX_ROUNDS = 400;      // bar-moving rounds, each moves bars off one system
 var SWEEPS = 6;            // one-gap-at-a-time sweeps for tightly packed systems
 
+// Runs fn as one undoable command named name and returns what it returns. When fn throws, its
+// changes are rolled back and the command is closed, so the score is never left mid-command.
+function inCommand(score, name, fn) {
+    score.startCmd(name);
+    var result;
+    try {
+        result = fn();
+    } catch (e) {
+        score.endCmd(true);
+        throw e;
+    }
+    score.endCmd();
+    return result;
+}
+
 function eachMeasure(score, range, fn) {
     for (var m = score.firstMeasure; m; m = m.nextMeasure) {
         var mt = m.tick.ticks;
@@ -35,14 +50,28 @@ function eachMeasure(score, range, fn) {
     }
 }
 
+// Removes the leading space in range { t0, t1 }. When the bar after the range is on the same line,
+// its downbeat closes the range's last gap, and Make linear may have moved it and the signatures
+// before it: those go too. Nothing else outside the range is touched.
 function clearLeading(score, range) {
-    eachMeasure(score, range, function (m) {
-        for (var s = m.firstSegment; s; s = s.nextInMeasure) {
-            if (Number(s.leadingSpace) !== 0) {
-                s.leadingSpace = 0;
-            }
+    function clear(s) {
+        if (Number(s.leadingSpace) !== 0) {
+            s.leadingSpace = 0;
         }
+    }
+    var last = null, s;
+    eachMeasure(score, range, function (m) {
+        for (s = m.firstSegment; s; s = s.nextInMeasure) {
+            clear(s);
+        }
+        last = m;
     });
+    var next = last && last.nextMeasure;
+    if (next && sysKey(next) === sysKey(last)) {
+        for (s = next.firstSegment; s && s.tick === next.tick.ticks; s = s.nextInMeasure) {
+            clear(s);
+        }
+    }
 }
 
 function resetStretch(m) {
@@ -163,16 +192,23 @@ function attempt(eng, range, relayout, skip, collapse) {
             correct(sys, collapse);
         });
     }
-    systems.forEach(function (sys) {
+    function measure(sys) {
         sys.error = skip(sys, -1) ? Infinity : gridError(sys.points);
-        if (sys.error >= TOLERANCE && sys.error < Infinity) {
-            sys.error = sweep(sys, relayout, collapse);
-        }
         // with bars kept anything goes, so only spacing that moves bars checks the barlines
-        if (!collapse && !barlinesFit(snapshot(sys).points)) {
+        if (!collapse && !barlinesFit(sys.points)) {
             sys.error = Infinity;
         }
+    }
+    systems.forEach(function (sys) {
+        measure(sys);
+        if (sys.error >= TOLERANCE && sys.error < Infinity) {
+            sweep(sys, relayout, collapse);
+        }
     });
+    // Every sweep lays out again, and with bars moving that can move bars between lines measured
+    // before it. So every line is measured again on the final layout.
+    systems = collect(eng, range);
+    systems.forEach(measure);
     return systems;
 }
 
@@ -194,66 +230,66 @@ function linearize(eng, range, options) {
     var failed = [], err = 0, dense = {};
     // with bars kept, no system fails: what squeezing cannot close is reported as the error
     var tolerance = keepBars ? Infinity : TOLERANCE;
-    score.startCmd("Linear spacing");
-    if (releaseImages(eng, range)) {
-        relayout();   // released images let go of the notes they pushed, bars may come back
-    }
-    var systems = collect(eng, range);
-    if (Number(score.style.value("measureSpacing")) !== 2) {
-        recordOriginal(score);
-        // The style is score-wide and would reflow every system. Lock them all first, so that
-        // only the selection changes.
-        for (var m = score.firstMeasure; m; m = m.nextMeasure) {
-            if (!m.parent.isLocked) {
-                m.parent.isLocked = true;
+    return inCommand(score, "Linear spacing", function () {
+        if (releaseImages(eng, range)) {
+            relayout();   // released images let go of the notes they pushed, bars may come back
+        }
+        var systems = collect(eng, range);
+        if (Number(score.style.value("measureSpacing")) !== 2) {
+            recordOriginal(score);
+            // The style is score-wide and would reflow every system. Lock them all first, so that
+            // only the selection changes.
+            for (var m = score.firstMeasure; m; m = m.nextMeasure) {
+                if (!m.parent.isLocked) {
+                    m.parent.isLocked = true;
+                }
+            }
+            score.style.setValue("measureSpacing", 2);
+        }
+        systems.forEach(function (sys) {
+            sys.measures[0].parent.isLocked = keepBars;
+        });
+        eachMeasure(score, range, resetStretch);
+        // when bars may move, systems that are too dense are not corrected: their bars move instead
+        function skipDense(sys, pass) {
+            if (pass === 0) {
+                dense[sys.firstBar] = !keepBars && tooDense(sys.points);
+            }
+            return dense[sys.firstBar];
+        }
+        for (var round = 0; round < (keepBars ? 1 : MAX_ROUNDS); round++) {
+            clearLeading(score, range);
+            systems = attempt(eng, range, relayout, skipDense, keepBars);
+            var bad = systems.filter(function (sys) { return sys.error >= tolerance; });
+            if (keepBars || !bad.length || !moveBars(score, bad)) {
+                break;
             }
         }
-        score.style.setValue("measureSpacing", 2);
-    }
-    systems.forEach(function (sys) {
-        sys.measures[0].parent.isLocked = keepBars;
+        systems.forEach(function (sys) {
+            if (sys.error < tolerance) {
+                err = Math.max(err, sys.error);
+            } else {
+                // drop any half-finished corrections so the system looks normal again
+                var ms = sys.measures, lastM = ms[ms.length - 1];
+                clearLeading(score, { t0: ms[0].tick.ticks, t1: lastM.tick.ticks + lastM.ticks.ticks });
+                failed.push({ firstBar: sys.firstBar, lastBar: sys.lastBar });
+            }
+        });
+        return { error: err, failed: failed };
     });
-    eachMeasure(score, range, resetStretch);
-    // when bars may move, systems that are too dense are not corrected: their bars move instead
-    function skipDense(sys, pass) {
-        if (pass === 0) {
-            dense[sys.firstBar] = !keepBars && tooDense(sys.points);
-        }
-        return dense[sys.firstBar];
-    }
-    for (var round = 0; round < (keepBars ? 1 : MAX_ROUNDS); round++) {
-        clearLeading(score, range);
-        systems = attempt(eng, range, relayout, skipDense, keepBars);
-        var bad = systems.filter(function (sys) { return sys.error >= tolerance; });
-        if (keepBars || !bad.length || !moveBars(score, bad)) {
-            break;
-        }
-    }
-    systems.forEach(function (sys) {
-        if (sys.error < tolerance) {
-            err = Math.max(err, sys.error);
-        } else {
-            // drop any half-finished corrections so the system looks normal again
-            var ms = sys.measures, lastM = ms[ms.length - 1];
-            clearLeading(score, { t0: ms[0].tick.ticks, t1: lastM.tick.ticks + lastM.ticks.ticks });
-            failed.push({ firstBar: sys.firstBar, lastBar: sys.lastBar });
-        }
-    });
-    score.endCmd();
-    return { error: err, failed: failed };
 }
 
 // Undoes the per-bar changes in range { t0, t1 }: leading space, measure stretch and system locks.
 // The score-wide spacing ratio style is left alone.
 function reset(eng, range) {
     var score = eng.curScore;
-    score.startCmd("Reset linear spacing");
-    clearLeading(score, range);
-    eachMeasure(score, range, function (m) {
-        resetStretch(m);
-        m.parent.isLocked = false;
+    inCommand(score, "Reset linear spacing", function () {
+        clearLeading(score, range);
+        eachMeasure(score, range, function (m) {
+            resetStretch(m);
+            m.parent.isLocked = false;
+        });
     });
-    score.endCmd();
 }
 
 // Score metadata: what the score looked like before the first Make linear, so Reset all can restore it.
@@ -280,27 +316,27 @@ function recordOriginal(score) {
 function resetAll(eng) {
     var score = eng.curScore, whole = { t0: 0, t1: scoreEnd(score) };
     var original = score.metaTag(ORIGINAL_TAG);
-    score.startCmd("Reset all linear spacing");
-    clearLeading(score, whole);
-    eachMeasure(score, whole, resetStretch);
-    if (original) {
-        var o = JSON.parse(original);
-        eachMeasure(score, whole, function (m) {
-            if (m.parent.isLocked) {
-                m.parent.isLocked = false;
-            }
-        });
-        score.style.setValue("measureSpacing", o.measureSpacing);
-        layoutAll(eng);
-        o.locks.forEach(function (lock) {
-            var a = score.tick2measure(eng.fraction(lock[0], WHOLE_TICKS));
-            var b = score.tick2measure(eng.fraction(lock[1], WHOLE_TICKS));
-            if (a && b) {
-                score.makeIntoSystem(a, b);
-            }
-        });
-        score.setMetaTag(ORIGINAL_TAG, "");
-    }
-    score.endCmd();
-    return { restored: !!original };
+    return inCommand(score, "Reset all linear spacing", function () {
+        clearLeading(score, whole);
+        eachMeasure(score, whole, resetStretch);
+        if (original) {
+            var o = JSON.parse(original);
+            eachMeasure(score, whole, function (m) {
+                if (m.parent.isLocked) {
+                    m.parent.isLocked = false;
+                }
+            });
+            score.style.setValue("measureSpacing", o.measureSpacing);
+            layoutAll(eng);
+            o.locks.forEach(function (lock) {
+                var a = score.tick2measure(eng.fraction(lock[0], WHOLE_TICKS));
+                var b = score.tick2measure(eng.fraction(lock[1], WHOLE_TICKS));
+                if (a && b) {
+                    score.makeIntoSystem(a, b);
+                }
+            });
+            score.setMetaTag(ORIGINAL_TAG, "");
+        }
+        return { restored: !!original };
+    });
 }

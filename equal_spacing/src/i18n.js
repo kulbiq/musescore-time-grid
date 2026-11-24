@@ -44,8 +44,8 @@ var TRANSLATIONS = {
         "%n bar": ["%n takt", "%n takty", "%n taktów"],
         "Align to bar %1": "Wyrównaj do taktu %1",
         "Align to bars %1": "Wyrównaj do taktów %1",
-        "Could not make these bars linear, they are unchanged: %1.":
-            "Nie udało się wyrównać liniowo tych taktów, zostały bez zmian: %1.",
+        "Could not make these bars linear: %1.":
+            "Nie udało się wyrównać liniowo tych taktów: %1.",
         "Done. Every note in the selection is within %1 mm of a linear time grid.":
             "Gotowe. Każda nuta w zaznaczeniu jest najwyżej %1 mm od liniowej siatki czasu.",
         "Could not align the image to bar %1: its staff has no notes there.":

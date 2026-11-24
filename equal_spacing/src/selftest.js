@@ -190,6 +190,17 @@ function keepAll() {
     }
 }
 
+// How many segments of the score have leading space.
+function leadingCount(score) {
+    var n = 0;
+    for (var m = score.firstMeasure; m; m = m.nextMeasure) {
+        for (var s = m.firstSegment; s; s = s.nextInMeasure) {
+            n += Number(s.leadingSpace) !== 0 ? 1 : 0;
+        }
+    }
+    return n;
+}
+
 // Headless check on the score from tests/make_edge_score.py, of what sits between notes in the
 // middle of a line: time signature, key and clef changes, repeats, many accidentals.
 //   mscore -j job.json --extension "musescore://extensions/equal_spacing?action=edges"
@@ -203,6 +214,31 @@ function edges() {
     api.log.info("equal_spacing edges keep: " + JSON.stringify(kept) + " err=" + keptError.toFixed(4) + " lines=" + lineReport(eng));
     var ok = kept.failed.length === 0 && keptError < KEEP_BARS_TOLERANCE && systemsOf(eng) === systems;
     resetAll(eng);
+
+    // a selection that ends inside a line: Make linear may move the downbeat after it, so Reset on
+    // the same selection must take that back too, and leave no leading space anywhere
+    var part = barsRange(score, 2, 3);
+    linearize(eng, part, { keepBars: true });
+    reset(eng, part);
+    var left = leadingCount(score);
+    api.log.info("equal_spacing edges reset bars 2-3: leading space left on " + left + " segments");
+    ok = ok && left === 0;
+    resetAll(eng);
+
+    // a command that throws must leave the score as it was, and closed for the next command
+    var thrown = false;
+    try {
+        inCommand(score, "Fails", function () {
+            score.firstMeasure.lastSegment.leadingSpace = 1;
+            throw new Error("on purpose");
+        });
+    } catch (e) {
+        thrown = true;
+    }
+    var rolledBack = leadingCount(score) === 0;
+    reset(eng, part);   // a new command must work
+    api.log.info("equal_spacing edges command that throws: thrown=" + thrown + " rolled back=" + rolledBack);
+    ok = ok && thrown && rolledBack;
 
     // two bars that fit on one line must stay on it with bars moving: the change between them may
     // not count as too dense or out of place
