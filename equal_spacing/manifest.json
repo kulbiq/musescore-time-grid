@@ -1,0 +1,41 @@
+{
+    "uri": "musescore://extensions/equal_spacing",
+    "type": "composite",
+    "title": "Equal Spacing",
+    "description": "Spaces the selected bars linearly in time, so a linear time scale lines up with the music.",
+    "version": "1.0.0",
+
+    "actions": [
+        {
+            "code": "dialog",
+            "type": "form",
+            "title": "Equal Spacing",
+            "modal": false,
+            "path": "Main.qml"
+        },
+        {
+            "code": "selftest",
+            "type": "macros",
+            "title": "Equal Spacing self-test",
+            "show_on_appmenu": false,
+            "path": "core.js",
+            "func": "selftest"
+        },
+        {
+            "code": "verify",
+            "type": "macros",
+            "title": "Equal Spacing self-test (reload)",
+            "show_on_appmenu": false,
+            "path": "core.js",
+            "func": "verify"
+        },
+        {
+            "code": "all",
+            "type": "macros",
+            "title": "Equal Spacing (whole score, headless)",
+            "show_on_appmenu": false,
+            "path": "core.js",
+            "func": "all"
+        }
+    ]
+}
