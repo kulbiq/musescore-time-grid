@@ -19,10 +19,11 @@ function sysKey(measure) {
     return p.x + "," + p.y;
 }
 
-// Expands the current range selection to whole bars.
-// Returns { t0, t1 } in ticks, or null when there is no range selection.
-function selectedRange(score) {
-    var sel = score.selection;
+// Expands the current score's range selection to whole bars.
+// Returns { t0, t1 } in ticks, or null when there is no score or no range selection.
+function selectedRange(eng) {
+    var score = eng.curScore;
+    var sel = score && score.selection;
     if (!sel || !sel.isRange || !sel.startSegment) {
         return null;
     }
@@ -53,12 +54,13 @@ function snapshot(sys) {
     return sys;
 }
 
-// Walks the bars overlapping [t0, t1) and returns one entry per system:
+// Walks the bars of the current score overlapping range { t0, t1 } and returns one entry per system:
 // { firstBar, lastBar, measures, endsSystem, points }
 // points are the note positions in the range plus one closing reference point:
 // the next note in the same system, or the system's final barline.
 // ponytail: multimeasure rests are walked as their underlying bars, use nextMeasureMM if that matters.
-function collect(score, eng, t0, t1) {
+function collect(eng, range) {
+    var score = eng.curScore, t0 = range.t0, t1 = range.t1;
     var CR = eng.Segment.ChordRest, BAR = eng.Segment.EndBarLine;
     var systems = [], cur = null, barNo = 0;
     function add(seg, t, bar, isNote) {

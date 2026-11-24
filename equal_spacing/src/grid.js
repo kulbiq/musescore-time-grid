@@ -13,9 +13,9 @@
 // The grid of a list of points is the line through its first and last point.
 
 var TOLERANCE = 0.01;     // spatium, about 0.02 mm at default staff size
-// Squeezing stops where MuseScore refuses to move a barline any closer to its notes,
+// With bars kept, squeezing stops where MuseScore refuses to move a barline any closer to its notes,
 // which leaves a few hundredths of a staff space. Accept that instead of failing.
-var SQUEEZE_TOLERANCE = 0.1;
+var KEEP_BARS_TOLERANCE = 0.1;
 var DENSE_SLACK = 0.05;        // spatium
 var BARLINE_CLEARANCE = 1.5;   // spatium a barline keeps from the start of the note before it
 var NOTE_AFTER_BARLINE = 0.4;  // spatium a downbeat keeps from the barline before it

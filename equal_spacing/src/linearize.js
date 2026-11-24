@@ -24,20 +24,20 @@ var STRETCH_STEP = 1.15, MAX_STRETCH = 10;   // 10 is MuseScore's own limit
 var MAX_ROUNDS = 400;      // bar-moving rounds, each moves at most one bar per system
 var SWEEPS = 6;            // one-gap-at-a-time sweeps for tightly packed systems
 
-function eachMeasure(score, t0, t1, fn) {
+function eachMeasure(score, range, fn) {
     for (var m = score.firstMeasure; m; m = m.nextMeasure) {
         var mt = m.tick.ticks;
-        if (mt >= t1) {
+        if (mt >= range.t1) {
             break;
         }
-        if (mt + m.ticks.ticks > t0) {
+        if (mt + m.ticks.ticks > range.t0) {
             fn(m);
         }
     }
 }
 
-function clearLeading(score, t0, t1) {
-    eachMeasure(score, t0, t1, function (m) {
+function clearLeading(score, range) {
+    eachMeasure(score, range, function (m) {
         for (var s = m.firstSegment; s; s = s.nextInMeasure) {
             if (Number(s.leadingSpace) !== 0) {
                 s.leadingSpace = 0;
@@ -86,13 +86,13 @@ function correct(sys) {
 // right, with a fresh layout after every change. In a tight system a carrier also changes the
 // gap after it, which makes correct() overshoot. Going in order absorbs that.
 // Returns the system's remaining error.
-function sweep(score, sys, f0, f1) {
+function sweep(sys, relayout) {
     var p = sys.points;
     for (var round = 0; round < SWEEPS; round++) {
         for (var i = 1; i < p.length; i++) {
             snapshot(sys);
             if (applyGap(p, i, gapError(p, i))) {
-                score.doLayout(f0, f1);
+                relayout();
             }
         }
         snapshot(sys);
@@ -136,11 +136,11 @@ function widen(systems) {
 
 // One attempt at the current system layout. Lays out, then corrects every system that is not
 // in `skip` (a predicate). Returns the systems, each with .error set (Infinity for skipped ones).
-function attempt(score, eng, t0, t1, f0, f1, skip) {
+function attempt(eng, range, relayout, skip) {
     var systems;
     for (var pass = 0; pass < PASSES; pass++) {
-        score.doLayout(f0, f1);
-        systems = collect(score, eng, t0, t1);
+        relayout();
+        systems = collect(eng, range);
         var todo = systems.filter(function (sys) { return !skip(sys, pass); });
         if (maxError(todo) < TOLERANCE || pass === PASSES - 1) {
             break;
@@ -150,7 +150,7 @@ function attempt(score, eng, t0, t1, f0, f1, skip) {
     systems.forEach(function (sys) {
         sys.error = skip(sys, -1) ? Infinity : gridError(sys.points);
         if (sys.error >= TOLERANCE && sys.error < Infinity) {
-            sys.error = sweep(score, sys, f0, f1);
+            sys.error = sweep(sys, relayout);
         }
         if (!barlinesFit(snapshot(sys).points)) {
             sys.error = Infinity;
@@ -159,18 +159,22 @@ function attempt(score, eng, t0, t1, f0, f1, skip) {
     return systems;
 }
 
-// Makes spacing linear in [t0, t1).
-// squeeze false: bars of a too dense system move to the next line.
-// squeeze true: every bar stays on its system, notes may end up closer than MuseScore allows.
+// Makes spacing linear in range { t0, t1 } of the current score.
+// options.keepBars false: bars of a too dense system move to the next line.
+// options.keepBars true: every bar stays on its system, notes may end up closer than MuseScore allows.
 // Returns { error, failed }: the worst remaining error in spatium among the systems that worked,
 // and the systems that could not be made linear and were left alone, as [{ firstBar, lastBar }].
 // Runs as a single undoable command.
 // ponytail: every pass lays out the whole score, because MuseScore's partial layout can break
 // systems differently from the full layout. Fine for selections, slow for whole long scores.
-function linearize(score, eng, t0, t1, squeeze) {
+function linearize(eng, range, options) {
+    var score = eng.curScore, keepBars = options.keepBars;
     var f0 = eng.fraction(0, WHOLE_TICKS), f1 = eng.fraction(scoreEnd(score), WHOLE_TICKS);
-    var systems = collect(score, eng, t0, t1), failed = [], err = 0, dense = {};
-    var tolerance = squeeze ? SQUEEZE_TOLERANCE : TOLERANCE;
+    function relayout() {
+        score.doLayout(f0, f1);
+    }
+    var systems = collect(eng, range), failed = [], err = 0, dense = {};
+    var tolerance = keepBars ? KEEP_BARS_TOLERANCE : TOLERANCE;
     score.startCmd("Linear spacing");
     if (Number(score.style.value("measureSpacing")) !== 2) {
         // The style is score-wide and would reflow every system. Lock them all first, so that
@@ -183,20 +187,20 @@ function linearize(score, eng, t0, t1, squeeze) {
         score.style.setValue("measureSpacing", 2);
     }
     systems.forEach(function (sys) {
-        sys.measures[0].parent.isLocked = squeeze;
+        sys.measures[0].parent.isLocked = keepBars;
     });
-    eachMeasure(score, t0, t1, resetStretch);
-    for (var round = 0; round < (squeeze ? 1 : MAX_ROUNDS); round++) {
-        clearLeading(score, t0, t1);
+    eachMeasure(score, range, resetStretch);
+    for (var round = 0; round < (keepBars ? 1 : MAX_ROUNDS); round++) {
+        clearLeading(score, range);
         // when bars may move, systems that are too dense are not corrected but widened
-        systems = attempt(score, eng, t0, t1, f0, f1, function (sys, pass) {
+        systems = attempt(eng, range, relayout, function (sys, pass) {
             if (pass === 0) {
-                dense[sys.firstBar] = !squeeze && tooDense(sys.points);
+                dense[sys.firstBar] = !keepBars && tooDense(sys.points);
             }
             return dense[sys.firstBar];
         });
         var bad = systems.filter(function (sys) { return sys.error >= tolerance; });
-        if (squeeze || !bad.length || !widen(bad)) {
+        if (keepBars || !bad.length || !widen(bad)) {
             break;
         }
     }
@@ -206,7 +210,7 @@ function linearize(score, eng, t0, t1, squeeze) {
         } else {
             // drop any half-finished corrections so the system looks normal again
             var ms = sys.measures, lastM = ms[ms.length - 1];
-            clearLeading(score, ms[0].tick.ticks, lastM.tick.ticks + lastM.ticks.ticks);
+            clearLeading(score, { t0: ms[0].tick.ticks, t1: lastM.tick.ticks + lastM.ticks.ticks });
             failed.push({ firstBar: sys.firstBar, lastBar: sys.lastBar });
         }
     });
@@ -214,12 +218,13 @@ function linearize(score, eng, t0, t1, squeeze) {
     return { error: err, failed: failed };
 }
 
-// Undoes the per-bar changes in [t0, t1): leading space, measure stretch and system locks.
+// Undoes the per-bar changes in range { t0, t1 }: leading space, measure stretch and system locks.
 // The score-wide spacing ratio style is left alone.
-function reset(score, eng, t0, t1) {
+function reset(eng, range) {
+    var score = eng.curScore;
     score.startCmd("Reset linear spacing");
-    clearLeading(score, t0, t1);
-    eachMeasure(score, t0, t1, function (m) {
+    clearLeading(score, range);
+    eachMeasure(score, range, function (m) {
         resetStretch(m);
         m.parent.isLocked = false;
     });

@@ -1,5 +1,13 @@
 // What the dialog shows about the selection.
 
+function mmPerSpatium(score) {
+    return score.firstMeasure.spatium / 1200 * 25.4;   // spatium is in 1/1200 inch
+}
+
+function barsLabel(firstBar, lastBar) {
+    return firstBar === lastBar ? "" + firstBar : firstBar + "-" + lastBar;
+}
+
 // Playback time of a tick in seconds (repeats not unrolled).
 // lastNoteTick is the tick of the score's last note: past it the cursor cannot go.
 function seconds(cursor, tick, lastNoteTick) {
@@ -12,15 +20,16 @@ function seconds(cursor, tick, lastNoteTick) {
     return s;
 }
 
-// One row per selected system, for the dialog:
-// { firstBar, lastBar, start, end, duration (seconds), x0, x1 (spatium from page left), error (spatium) }
-function describe(score, eng, t0, t1) {
+// One row per system in range { t0, t1 } of the current score:
+// { firstBar, lastBar, start, end, duration (seconds), x0Mm, x1Mm (from the left page edge) }
+function describe(eng, range) {
+    var score = eng.curScore, mm = mmPerSpatium(score);
     var cursor = score.newCursor();
     var lastNoteTick = score.lastSegment.tick;
     for (var s = score.lastSegment; s && s.segmentType !== eng.Segment.ChordRest; s = s.prev) {
         lastNoteTick = s.prev ? s.prev.tick : 0;
     }
-    var rows = [], systems = collect(score, eng, t0, t1);
+    var rows = [], systems = collect(eng, range);
     for (var i = 0; i < systems.length; i++) {
         var p = systems[i].points;
         if (p.length < 2) {
@@ -31,8 +40,18 @@ function describe(score, eng, t0, t1) {
         rows.push({
             firstBar: systems[i].firstBar, lastBar: systems[i].lastBar,
             start: start, end: end, duration: end - start,
-            x0: a.x, x1: b.x, error: gridError(p)
+            x0Mm: a.x * mm, x1Mm: b.x * mm
         });
     }
     return rows;
+}
+
+// The status line after Make linear, from the { error, failed } that linearize returns.
+function resultMessage(eng, result) {
+    if (result.failed.length) {
+        return "Could not make these bars linear, they are unchanged: "
+            + result.failed.map(function (f) { return barsLabel(f.firstBar, f.lastBar); }).join(", ") + ".";
+    }
+    var off = (result.error * mmPerSpatium(eng.curScore)).toFixed(2);
+    return "Done. Every note in the selection is within " + off + " mm of a linear time grid.";
 }

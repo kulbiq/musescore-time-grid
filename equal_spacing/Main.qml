@@ -14,7 +14,6 @@ ExtensionBlank {
 
     property var range: null      // { t0, t1 } of the selection, snapped to whole bars
     property var rows: []         // one entry per selected system, see Core.describe
-    property real mmPerSp: 1.75   // millimetres per staff space
     property string status: ""
     property bool keepBars: false   // false: bars of a too dense system move to the next line
 
@@ -35,24 +34,20 @@ ExtensionBlank {
 
     function cells(r) {
         return [
-            r.firstBar === r.lastBar ? "" + r.firstBar : r.firstBar + "-" + r.lastBar,
+            Core.barsLabel(r.firstBar, r.lastBar),
             clock(r.start), clock(r.end), r.duration.toFixed(3) + " s",
-            (r.x0 * mmPerSp).toFixed(1), (r.x1 * mmPerSp).toFixed(1)
+            r.x0Mm.toFixed(1), r.x1Mm.toFixed(1)
         ];
     }
 
     function refresh(force) {
-        var score = api.engraving.curScore;
-        var next = score ? Core.selectedRange(score) : null;
+        var next = Core.selectedRange(api.engraving);
         var same = (!next && !range) || (next && range && next.t0 === range.t0 && next.t1 === range.t1);
         if (same && !force) {
             return;
         }
         range = next;
-        rows = next ? Core.describe(score, api.engraving, next.t0, next.t1) : [];
-        if (score) {
-            mmPerSp = score.firstMeasure.spatium / 1200 * 25.4;   // spatium is in 1/1200 inch
-        }
+        rows = next ? Core.describe(api.engraving, next) : [];
     }
 
     function summary() {
@@ -60,7 +55,7 @@ ExtensionBlank {
             return "Select the bars or the system to space, then press Make linear.";
         }
         var a = rows[0], b = rows[rows.length - 1];
-        return "Bars " + a.firstBar + "-" + b.lastBar + "   " + clock(a.start) + " to " + clock(b.end)
+        return "Bars " + Core.barsLabel(a.firstBar, b.lastBar) + "   " + clock(a.start) + " to " + clock(b.end)
                 + "   duration " + (b.end - a.start).toFixed(3) + " s";
     }
 
@@ -178,16 +173,9 @@ ExtensionBlank {
                     accentButton: true
                     enabled: root.range !== null
                     onClicked: {
-                        var res = Core.linearize(api.engraving.curScore, api.engraving,
-                                                 root.range.t0, root.range.t1, root.keepBars);
+                        var res = Core.linearize(api.engraving, root.range, { keepBars: root.keepBars });
                         root.refresh(true);
-                        var bad = res.failed.map(function (f) {
-                            return f.firstBar === f.lastBar ? "" + f.firstBar : f.firstBar + "-" + f.lastBar;
-                        });
-                        var off = (res.error * root.mmPerSp).toFixed(2);
-                        root.status = bad.length === 0
-                            ? "Done. Every note in the selection is within " + off + " mm of a linear time grid."
-                            : "Could not make these bars linear, they are unchanged: " + bad.join(", ") + ".";
+                        root.status = Core.resultMessage(api.engraving, res);
                     }
                 }
 
@@ -195,7 +183,7 @@ ExtensionBlank {
                     text: "Reset"
                     enabled: root.range !== null
                     onClicked: {
-                        Core.reset(api.engraving.curScore, api.engraving, root.range.t0, root.range.t1);
+                        Core.reset(api.engraving, root.range);
                         root.refresh(true);
                         root.status = "Removed the spacing adjustments from the selection.";
                     }

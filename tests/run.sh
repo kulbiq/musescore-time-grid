@@ -1,9 +1,10 @@
 #!/bin/sh
-# Headless end-to-end check: installs the extension, runs it on a generated score
-# through the real MuseScore binary, and renders before/after PNGs into tests/out.
+# Runs the node unit tests, then the headless end-to-end check: installs the extension,
+# runs it on a generated score through the real MuseScore binary, and renders
+# before/after PNGs into tests/out.
 set -e
 cd "$(dirname "$0")/.."
-node --test tests/*.test.js >/dev/null || { node --test tests/*.test.js; echo "FAILED: unit tests"; exit 1; }
+node --test --test-reporter=dot tests/*.test.js
 M="${MSCORE:-/Applications/MuseScore 4.app/Contents/MacOS/mscore}"
 out="$PWD/tests/out"
 rm -rf "$out" && mkdir -p "$out"
