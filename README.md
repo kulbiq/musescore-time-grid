@@ -11,6 +11,7 @@ A note twice as long gets twice the room, and every beat is the same distance ap
 ## Install
 
 You need MuseScore Studio 4.7 or newer.
+So far it has only been tested on macOS; it should work on Windows and Linux too, and reports are welcome.
 
 1. Download `time_grid-<version>.mext` from the [Releases](../../releases) page.
 2. Drag it onto the MuseScore window.

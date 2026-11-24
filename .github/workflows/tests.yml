@@ -31,11 +31,11 @@ jobs:
           path: ${{ env.MUSESCORE_DMG }}
           key: ${{ env.MUSESCORE_DMG }}
       - name: Download MuseScore Studio
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
-          gh release download "$MUSESCORE_TAG" --repo musescore/MuseScore --pattern checksums.sha256.txt --clobber
-          test -f "$MUSESCORE_DMG" || gh release download "$MUSESCORE_TAG" --repo musescore/MuseScore --pattern "$MUSESCORE_DMG"
+          url="https://github.com/musescore/MuseScore/releases/download/$MUSESCORE_TAG"
+          get() { curl -fsSL --retry 5 --retry-all-errors -o "$1" "$url/$1"; }
+          get checksums.sha256.txt
+          test -f "$MUSESCORE_DMG" || get "$MUSESCORE_DMG"
           grep " $MUSESCORE_DMG\$" checksums.sha256.txt | shasum -a 256 -c -
       - name: Install MuseScore Studio
         run: |
