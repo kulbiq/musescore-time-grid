@@ -1,21 +1,21 @@
 {
-    "uri": "musescore://extensions/equal_spacing",
+    "uri": "musescore://extensions/time_grid",
     "type": "composite",
-    "title": "Equal Spacing",
-    "description": "Spaces the selected bars linearly in time, so a linear time scale lines up with the music.",
+    "title": "Time Grid",
+    "description": "Puts the notes on an even time grid and lines up a waveform or spectrogram picture with them.",
     "version": "1.0.0",
     "actions": [
         {
             "code": "dialog",
             "type": "form",
-            "title": "Equal Spacing",
+            "title": "Time Grid",
             "modal": false,
             "path": "Main.qml"
         },
         {
             "code": "selftest",
             "type": "macros",
-            "title": "Equal Spacing self-test",
+            "title": "Time Grid self-test",
             "show_on_appmenu": false,
             "path": "core.js",
             "func": "selftest"
@@ -23,7 +23,7 @@
         {
             "code": "verify",
             "type": "macros",
-            "title": "Equal Spacing self-test (reload)",
+            "title": "Time Grid self-test (reload)",
             "show_on_appmenu": false,
             "path": "core.js",
             "func": "verify"
@@ -31,7 +31,7 @@
         {
             "code": "all",
             "type": "macros",
-            "title": "Equal Spacing (whole score, headless)",
+            "title": "Time Grid (whole score, headless)",
             "show_on_appmenu": false,
             "path": "core.js",
             "func": "all"
@@ -39,7 +39,7 @@
         {
             "code": "keepall",
             "type": "macros",
-            "title": "Equal Spacing self-test (keep bars)",
+            "title": "Time Grid self-test (keep bars)",
             "show_on_appmenu": false,
             "path": "core.js",
             "func": "keepAll"
@@ -47,7 +47,7 @@
         {
             "code": "edges",
             "type": "macros",
-            "title": "Equal Spacing self-test (signatures and repeats)",
+            "title": "Time Grid self-test (signatures and repeats)",
             "show_on_appmenu": false,
             "path": "core.js",
             "func": "edges"
@@ -55,7 +55,7 @@
         {
             "code": "figure",
             "type": "macros",
-            "title": "Equal Spacing help figure (headless)",
+            "title": "Time Grid help figure (headless)",
             "show_on_appmenu": false,
             "path": "core.js",
             "func": "figure"

@@ -4,10 +4,10 @@
 #
 # core.js is loaded both by Main.qml (QML import) and by the macros actions in
 # manifest.json, which cannot load sibling files the same way. So the sources in
-# equal_spacing/src are joined into the one core.js that both load.
+# time_grid/src are joined into the one core.js that both load.
 set -e
-src="$(dirname "$0")/equal_spacing"
-dest="$HOME/Library/Application Support/MuseScore/MuseScore4/extensions/equal_spacing"
+src="$(dirname "$0")/time_grid"
+dest="$HOME/Library/Application Support/MuseScore/MuseScore4/extensions/time_grid"
 rm -rf "$dest"
 mkdir -p "$dest"
 cp "$src/manifest.json" "$src"/*.qml "$src"/*.png "$dest/"

@@ -293,6 +293,7 @@ function reset(eng, range) {
 }
 
 // Score metadata: what the score looked like before the first Make linear, so Reset all can restore it.
+// kept from the extension's first name, Time Grid, so scores spaced before the rename still reset
 var ORIGINAL_TAG = "equalSpacingOriginal";
 
 // Records the spacing ratio style and the user's own system locks, as { measureSpacing, locks },

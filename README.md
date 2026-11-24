@@ -1,7 +1,8 @@
-# Equal Spacing
+# Time Grid
 
-A MuseScore Studio 4.7+ extension that spaces the selected bars linearly in time.
-After running it, every note in a system sits at `x = x0 + k * time`, so a linear time scale drawn above the system lines up with the music.
+A MuseScore Studio 4.7+ extension that puts the notes on an even time grid, and lines up a waveform or spectrogram picture with them.
+
+It spaces the selected bars linearly in time: every note in a system sits at `x = x0 + k * time`, so a linear time scale, a waveform or a spectrogram drawn above the system lines up with the music.
 Bars of equal duration come out equally wide.
 A barline takes its room from the time span of the note before it, so every downbeat stays on the grid.
 
@@ -9,7 +10,7 @@ A barline takes its room from the time span of the note before it, so every down
 
 Run `./install.sh` (macOS), then restart MuseScore.
 Enable the extension once in Home > Plugins.
-It then appears as Plugins > Equal Spacing > Equal Spacing.
+It then appears as Plugins > Time Grid > Time Grid.
 Re-run `./install.sh` and restart MuseScore after changing the code.
 
 ## Use
@@ -41,7 +42,7 @@ Time signature, key and clef changes, clef changes inside a bar, start and end r
 With bars moving, they keep their usual distances, and a line only gives up bars when they really do not fit.
 Wide changes, such as a new clef, key and time signature with a start repeat after a bar of eighths, usually do not fit on a line with linear spacing: that bar then starts the next line.
 
-## Images
+## Images: waveforms and spectrograms
 
 MuseScore does not let extensions load picture files, so the image comes in through MuseScore itself: drag the image file onto the bar where it should start (or copy the picture and paste it onto a selected note).
 The bar it lands in is its anchor bar.
@@ -62,9 +63,9 @@ It sits 1 staff space above the staff, or above the highest note if that is high
 ## Languages
 
 The dialog speaks English and Polish, following MuseScore's language (Preferences > General > Language).
-MuseScore cannot load an extension's own translation files, so the texts live in `equal_spacing/src/i18n.js`, keyed by their English text, and the extension picks them by the language MuseScore sets for Qt.
+MuseScore cannot load an extension's own translation files, so the texts live in `time_grid/src/i18n.js`, keyed by their English text, and the extension picks them by the language MuseScore sets for Qt.
 To add a language, add its table and plural rule there; `node --test tests/*.test.js` then reports every text still missing.
-The menu entry "Equal Spacing" stays English: `manifest.json` titles cannot be translated.
+The menu entry "Time Grid" stays English: `manifest.json` titles cannot be translated.
 
 ## What it changes in the score
 
@@ -88,7 +89,7 @@ Every pass lays out the whole score, so running it on all of a long score at onc
 ## Code
 
 MuseScore loads `core.js` twice: in the dialog (`Main.qml` imports it) and in the headless macros actions listed in `manifest.json`.
-The two loaders cannot load sibling files the same way, so `install.sh` joins the files in `equal_spacing/src` into the one installed `core.js`.
+The two loaders cannot load sibling files the same way, so `install.sh` joins the files in `time_grid/src` into the one installed `core.js`.
 Every function in `src` therefore shares one global scope.
 
 - `grid.js`: the grid math, pure, on plain points.
@@ -120,3 +121,7 @@ Last comes a score of what sits between notes in the middle of a line (`tests/ma
 In both modes every note must be on the grid and, with bars moving, no barline or signature out of its place.
 Two bars that fit on one line, with a time signature, a clef, a start repeat or a ":||:" between them, must stay on that line.
 Before and after PNGs are written to `tests/out`.
+
+## License
+
+GPL-3.0, like MuseScore itself: see `LICENSE`.

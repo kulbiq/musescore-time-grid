@@ -7,7 +7,7 @@ const path = require("node:path");
 const vm = require("node:vm");
 
 const grid = vm.createContext({});
-vm.runInContext(fs.readFileSync(path.join(__dirname, "../equal_spacing/src/grid.js"), "utf8"), grid);
+vm.runInContext(fs.readFileSync(path.join(__dirname, "../time_grid/src/grid.js"), "utf8"), grid);
 
 // Points from [t, x] pairs, all notes in one bar unless overridden.
 function points(pairs, extra) {

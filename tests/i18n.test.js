@@ -1,4 +1,4 @@
-// Checks the translations in equal_spacing/src/i18n.js against the texts the code asks for:
+// Checks the translations in time_grid/src/i18n.js against the texts the code asks for:
 // every tr() and trn() text has a translation in every language, none is left over, and the
 // placeholders match. Run with: node --test tests/*.test.js
 const test = require("node:test");
@@ -7,7 +7,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 
-const root = path.join(__dirname, "../equal_spacing");
+const root = path.join(__dirname, "../time_grid");
 const i18n = vm.createContext({});
 vm.runInContext(fs.readFileSync(path.join(root, "src/i18n.js"), "utf8"), i18n);
 
