@@ -5,7 +5,6 @@ them push the notes after them out of the way, so aligning them has to undo that
 Bar 15 is the dense bar of 16ths from make_score.py.
 Usage: python3 add_image.py in.mscz out.mscz
 """
-import hashlib
 import re
 import struct
 import sys
@@ -13,6 +12,27 @@ import zipfile
 import zlib
 
 BARS = (1, 15)
+
+
+def md4(data):
+    """MD4 hex digest (RFC 1320). MuseScore names pictures by it, and hashlib lacks it on OpenSSL 3."""
+    def f(x, y, z): return (x & y) | (~x & z)
+    def g(x, y, z): return (x & y) | (x & z) | (y & z)
+    def h(x, y, z): return x ^ y ^ z
+    def rol(v, n): return ((v << n) | (v >> (32 - n))) & 0xFFFFFFFF
+    msg = data + b"\x80" + b"\0" * ((55 - len(data)) % 64) + struct.pack("<Q", len(data) * 8)
+    state = [0x67452301, 0xEFCDAB89, 0x98BADCFE, 0x10325476]
+    rounds = ((f, 0, range(16), (3, 7, 11, 19)),
+              (g, 0x5A827999, (0, 4, 8, 12, 1, 5, 9, 13, 2, 6, 10, 14, 3, 7, 11, 15), (3, 5, 9, 13)),
+              (h, 0x6ED9EBA1, (0, 8, 4, 12, 2, 10, 6, 14, 1, 9, 5, 13, 3, 11, 7, 15), (3, 9, 11, 15)))
+    for block in range(0, len(msg), 64):
+        x = struct.unpack("<16I", msg[block:block + 64])
+        a, b, c, d = state
+        for fn, k, order, shifts in rounds:
+            for i, j in enumerate(order):
+                a, b, c, d = d, rol((a + fn(b, c, d) + x[j] + k) & 0xFFFFFFFF, shifts[i % 4]), b, c
+        state = [(v + w) & 0xFFFFFFFF for v, w in zip(state, (a, b, c, d))]
+    return struct.pack("<4I", *state).hex()
 
 
 def png(width, height, pixel=lambda x, y, width, height: (x * 255 // width, 80, 160)):
@@ -39,7 +59,7 @@ def add_images(mscx, image, bars=BARS):
 
 def main(src, dst, bars=BARS, data=None):
     data = data or png(400, 50)
-    name = hashlib.new("md4", data).hexdigest() + ".png"   # MuseScore's image store finds pictures by MD4
+    name = md4(data) + ".png"   # MuseScore's image store finds pictures by MD4
     image = (f"<Image><path>{name}</path><size w='70' h='8.75'/>"
              "<lockAspectRatio>1</lockAspectRatio><sizeIsSpatium>0</sizeIsSpatium></Image>")
     with zipfile.ZipFile(src) as zin, zipfile.ZipFile(dst, "w", zipfile.ZIP_DEFLATED) as zout:
