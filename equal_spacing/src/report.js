@@ -56,16 +56,20 @@ function resultMessage(eng, result) {
     return "Done. Every note in the selection is within " + off + " mm of a linear time grid.";
 }
 
-// The status line after Align image, from the result of alignImages.
+// The status line after Align image, from the { aligned, firstBar, lastBar } of alignImage.
 function alignMessage(result) {
-    if (!result.firstBar) {
-        return "Select bars of a single system to align an image to.";
-    }
-    var bars = "bars " + barsLabel(result.firstBar, result.lastBar);
+    var bars = "bar" + (result.firstBar === result.lastBar ? " " : "s ") + barsLabel(result.firstBar, result.lastBar);
     if (!result.aligned) {
-        return "No image on the selected staff in " + bars + ". Drag an image file onto a note there, "
-            + "then press Align image again.";
+        return "Could not align the image to " + bars + ": its staff has no notes there.";
     }
-    return (result.aligned === 1 ? "Image" : result.aligned + " images") + " aligned to " + bars
-        + ": from the first note to the end of the time span, above the staff.";
+    return "Image aligned to " + bars + ": from the first note to the end of their time span, above the staff.";
+}
+
+// The status line after Reset all, from the { restored } of resetAll.
+function resetAllMessage(result) {
+    return result.restored
+        ? "Reset the whole score: spacing adjustments removed, spacing ratio and system locks as before."
+        : "Removed all spacing adjustments. The spacing ratio and system locks from before were not recorded "
+          + "(spaced by an older version of this extension): reset them in Format > Style and "
+          + "Format > Add/remove system locks.";
 }

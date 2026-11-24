@@ -5,11 +5,7 @@
 var DENSE_BAR = 15;
 
 function barTick(score, bar) {
-    var m = score.firstMeasure;
-    for (var i = 1; i < bar; i++) {
-        m = m.nextMeasure;
-    }
-    return m.tick.ticks;
+    return barsRange(score, bar, bar).t0;
 }
 
 function wholeScore(score) {
@@ -22,31 +18,43 @@ function systemsOf(eng) {
     }).join(" ");
 }
 
-// How far, in spatium, the image on the first system is from where alignImages puts it:
-// from the first note to the end of the system's time span, IMAGE_GAP above the staff.
-// tests/add_image.py attaches it to the first note.
-function imageError(eng) {
-    var sys = collect(eng, wholeScore(eng.curScore))[0], p = sys.points;
-    var found = findImages(eng, sys, 0), img = found.images[0];
-    if (found.images.length !== 1) {
-        return Infinity;
+// The image tests/add_image.py put on the first note of a bar.
+function imageOnBar(eng, bar) {
+    var score = eng.curScore, t = barTick(score, bar);
+    var seg = score.findSegmentAtTick(eng.Segment.ChordRest, eng.fraction(t, WHOLE_TICKS));
+    var els = seg.elementAt(0).notes[0].elements;
+    for (var i = 0; i < els.length; i++) {
+        if (els[i].type === eng.Element.IMAGE) {
+            return els[i];
+        }
     }
-    var x = img.pagePos.x, y = img.pagePos.y, b = img.bbox;
-    return Math.max(Math.abs(x - p[0].x), Math.abs(x + b.width - p[p.length - 1].x),
-                    Math.abs(y + b.height - (found.top - IMAGE_GAP)));
+    return null;
 }
 
-function firstSystemRange(eng) {
-    var ms = collect(eng, wholeScore(eng.curScore))[0].measures, last = ms[ms.length - 1];
-    return { t0: ms[0].tick.ticks, t1: last.tick.ticks + last.ticks.ticks, staff: 0 };
+// How far, in spatium, an image is from where alignImage puts it over the bars in `res`:
+// from their first note to the end of their time span, IMAGE_GAP above the staff.
+function imageError(eng, img, res) {
+    var sys = collect(eng, barsRange(eng.curScore, res.firstBar, res.lastBar))[0], p = sys.points;
+    var x = img.pagePos.x, y = img.pagePos.y, b = img.bbox;
+    return Math.max(Math.abs(x - p[0].x), Math.abs(x + b.width - p[p.length - 1].x),
+                    Math.abs(y + b.height - (staffTop(eng, sys, 0) - IMAGE_GAP)));
+}
+
+// Aligns an image and checks it: { res, error } plus a log line.
+function checkAlign(eng, label, bar, barCount) {
+    var img = imageOnBar(eng, bar), res = alignImage(eng, img, barCount), err = imageError(eng, img, res);
+    api.log.info("equal_spacing image " + label + ": " + JSON.stringify(res) + " error=" + err.toFixed(4) + "sp"
+                 + " status=" + alignMessage(res));
+    return res.aligned && err < TOLERANCE;
 }
 
 function selftest() {
     var eng = api.engraving, score = eng.curScore, whole = wholeScore(score);
 
-    // align the image tests/add_image.py put on the first note first: everything after must
-    // come out exactly as on a score without it
-    var firstAlign = alignImages(eng, firstSystemRange(eng));
+    // the freshly dropped images push their notes away: aligning must undo that first, and
+    // everything after must come out exactly as on a score without them
+    var ok = checkAlign(eng, "dropped on bar 1, whole system", 1, 0);
+    ok = checkAlign(eng, "dropped on dense bar 15, 2 bars", DENSE_BAR, 2) && ok;
     var beforeDense = { t0: 0, t1: barTick(score, DENSE_BAR) };
     var before = maxError(collect(eng, beforeDense));
 
@@ -67,7 +75,7 @@ function selftest() {
     api.log.info("equal_spacing selftest: before=" + before.toFixed(3) + "sp partial=" + JSON.stringify(part)
                  + " keepBars=" + JSON.stringify(kept) + " err=" + keptError.toFixed(4) + " systems=" + systems + " -> " + keptSystems
                  + " move=" + JSON.stringify(mv) + " err=" + mvError.toFixed(4) + " systems=" + mvSystems);
-    var ok = before > 1 && part.failed.length === 0 && part.error < TOLERANCE
+    ok = ok && before > 1 && part.failed.length === 0 && part.error < TOLERANCE
         && keptError < KEEP_BARS_TOLERANCE && keptSystems === systems
         && mv.failed.length === 0 && mvError < TOLERANCE && mvSystems !== systems;
 
@@ -79,12 +87,8 @@ function selftest() {
         return r.x1Mm > r.x0Mm && r.end > r.start;
     });
 
-    // bars moved, so align again: the image must span the first system exactly, above the staff
-    var aligned = alignImages(eng, firstSystemRange(eng));
-    var imgError = imageError(eng);
-    api.log.info("equal_spacing image: " + JSON.stringify(aligned) + " error=" + imgError.toFixed(4) + "sp"
-                 + " status=" + alignMessage(aligned));
-    ok = ok && firstAlign.aligned === 1 && aligned.aligned === 1 && imgError < TOLERANCE;
+    // bars moved, so align again, over two bars this time: verify checks it after reloading
+    ok = checkAlign(eng, "bar 1 after spacing, 2 bars", 1, 2) && ok;
     if (!ok) {
         throw new Error("equal_spacing selftest FAILED");
     }
@@ -94,10 +98,44 @@ function selftest() {
 // to prove the spacing survives a save and reload.
 function verify() {
     var eng = api.engraving;
-    var err = maxError(collect(eng, wholeScore(eng.curScore))), imgError = imageError(eng);
+    var score = eng.curScore, whole = wholeScore(score);
+    var err = maxError(collect(eng, whole));
+    var imgError = imageError(eng, imageOnBar(eng, 1), { firstBar: 1, lastBar: 2 });
     api.log.info("equal_spacing verify: reloaded error=" + err.toFixed(4) + "sp");
     api.log.info("equal_spacing verify: reloaded image error=" + imgError.toFixed(4) + "sp");
-    if (!(err < TOLERANCE && imgError < TOLERANCE)) {
+
+    // Reset all: the score as before the first Make linear (make_score.py's score has no locks)
+    var original = JSON.parse(score.metaTag(ORIGINAL_TAG));
+    var reset = resetAll(eng), leading = 0, stretched = 0, locked = 0;
+    for (var m = score.firstMeasure; m; m = m.nextMeasure) {
+        stretched += m.userStretch !== 1 ? 1 : 0;
+        locked += m.parent.isLocked ? 1 : 0;
+        for (var s = m.firstSegment; s; s = s.nextInMeasure) {
+            leading += Number(s.leadingSpace) !== 0 ? 1 : 0;
+        }
+    }
+    var spacing = Number(score.style.value("measureSpacing"));
+    api.log.info("equal_spacing verify: reset all " + JSON.stringify(reset) + " spacing=" + spacing
+                 + " (was " + original.measureSpacing + ") leading=" + leading + " stretched=" + stretched
+                 + " locked=" + locked + " status=" + resetAllMessage(reset));
+    var resetOk = reset.restored && spacing === original.measureSpacing && original.locks.length === 0
+        && leading === 0 && stretched === 0 && locked === 0 && score.metaTag(ORIGINAL_TAG) === "";
+
+    // an image dropped but not aligned pushes the notes after it, bars 2 and on leave the line:
+    // Make linear must take it out of automatic placement first, as Align image does
+    var img = imageOnBar(eng, 1);
+    score.startCmd("Drop image again");
+    img.autoplace = true;   // as dropped: on its note, taking part in automatic placement
+    img.offsetX = 0;
+    img.offsetY = 0;
+    score.endCmd();
+    var pushed = systemsOf(eng);
+    var dropped = linearize(eng, barsRange(score, 1, 2), { keepBars: false });
+    var droppedError = maxError(collect(eng, barsRange(score, 1, 2)));
+    api.log.info("equal_spacing verify: dropped image " + JSON.stringify(dropped) + " err=" + droppedError.toFixed(4)
+                 + " autoplace=" + img.autoplace + " systems=" + pushed + " -> " + systemsOf(eng));
+    var droppedOk = dropped.failed.length === 0 && droppedError < TOLERANCE && !img.autoplace;
+    if (!(err < TOLERANCE && imgError < TOLERANCE && resetOk && droppedOk)) {
         throw new Error("equal_spacing verify FAILED");
     }
 }

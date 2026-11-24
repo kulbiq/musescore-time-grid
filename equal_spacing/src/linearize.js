@@ -170,14 +170,18 @@ function attempt(eng, range, relayout, skip) {
 // systems differently from the full layout. Fine for selections, slow for whole long scores.
 function linearize(eng, range, options) {
     var score = eng.curScore, keepBars = options.keepBars;
-    var f0 = eng.fraction(0, WHOLE_TICKS), f1 = eng.fraction(scoreEnd(score), WHOLE_TICKS);
     function relayout() {
-        score.doLayout(f0, f1);
+        layoutAll(eng);
     }
-    var systems = collect(eng, range), failed = [], err = 0, dense = {};
+    var failed = [], err = 0, dense = {};
     var tolerance = keepBars ? KEEP_BARS_TOLERANCE : TOLERANCE;
     score.startCmd("Linear spacing");
+    if (releaseImages(eng, range)) {
+        relayout();   // released images let go of the notes they pushed, bars may come back
+    }
+    var systems = collect(eng, range);
     if (Number(score.style.value("measureSpacing")) !== 2) {
+        recordOriginal(score);
         // The style is score-wide and would reflow every system. Lock them all first, so that
         // only the selection changes.
         for (var m = score.firstMeasure; m; m = m.nextMeasure) {
@@ -230,4 +234,53 @@ function reset(eng, range) {
         m.parent.isLocked = false;
     });
     score.endCmd();
+}
+
+// Score metadata: what the score looked like before the first Make linear, so Reset all can restore it.
+var ORIGINAL_TAG = "equalSpacingOriginal";
+
+// Records the spacing ratio style and the user's own system locks, as { measureSpacing, locks },
+// locks being [first bar tick, last bar tick] of each locked system. Call before changing either.
+function recordOriginal(score) {
+    var locks = [];
+    for (var m = score.firstMeasure; m; m = m.nextMeasure) {
+        var sys = m.parent;
+        if (sys.isLocked && sys.firstMeasure.is(m)) {
+            locks.push([m.tick.ticks, sys.lastMeasure.tick.ticks]);
+        }
+    }
+    score.setMetaTag(ORIGINAL_TAG, JSON.stringify({
+        measureSpacing: Number(score.style.value("measureSpacing")), locks: locks
+    }));
+}
+
+// Undoes everything Make linear changed in the whole score: leading space, measure stretch, and,
+// when the first Make linear recorded them, the spacing ratio style and the system locks.
+// Images stay where they are. Returns { restored }: whether style and locks were restored.
+function resetAll(eng) {
+    var score = eng.curScore, whole = { t0: 0, t1: scoreEnd(score) };
+    var original = score.metaTag(ORIGINAL_TAG);
+    score.startCmd("Reset all linear spacing");
+    clearLeading(score, whole);
+    eachMeasure(score, whole, resetStretch);
+    if (original) {
+        var o = JSON.parse(original);
+        eachMeasure(score, whole, function (m) {
+            if (m.parent.isLocked) {
+                m.parent.isLocked = false;
+            }
+        });
+        score.style.setValue("measureSpacing", o.measureSpacing);
+        layoutAll(eng);
+        o.locks.forEach(function (lock) {
+            var a = score.tick2measure(eng.fraction(lock[0], WHOLE_TICKS));
+            var b = score.tick2measure(eng.fraction(lock[1], WHOLE_TICKS));
+            if (a && b) {
+                score.makeIntoSystem(a, b);
+            }
+        });
+        score.setMetaTag(ORIGINAL_TAG, "");
+    }
+    score.endCmd();
+    return { restored: !!original };
 }

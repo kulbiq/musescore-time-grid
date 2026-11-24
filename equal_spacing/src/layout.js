@@ -14,14 +14,59 @@ function scoreEnd(score) {
     return last.tick.ticks + last.ticks.ticks;
 }
 
+// Lays out the whole score. Partial layout can break systems differently from the full one.
+function layoutAll(eng) {
+    var score = eng.curScore;
+    score.doLayout(eng.fraction(0, WHOLE_TICKS), eng.fraction(scoreEnd(score), WHOLE_TICKS));
+}
+
+// Bar numbers count measures from 1, as the dialog shows them.
+function barNumber(score, measure) {
+    var n = 1;
+    for (var m = score.firstMeasure; m && !m.is(measure); m = m.nextMeasure) {
+        n++;
+    }
+    return n;
+}
+
+// The range { t0, t1 } of bars firstBar to lastBar.
+function barsRange(score, firstBar, lastBar) {
+    var range = {}, n = 0;
+    for (var m = score.firstMeasure; m; m = m.nextMeasure) {
+        n++;
+        if (n === firstBar) {
+            range.t0 = m.tick.ticks;
+        }
+        if (n === lastBar) {
+            range.t1 = m.tick.ticks + m.ticks.ticks;
+            break;
+        }
+    }
+    return range;
+}
+
+// The first and last bar of the system a measure is in: { firstBar, lastBar }.
+function systemBars(score, measure) {
+    var key = sysKey(measure), first = null, last = null, n = 0;
+    for (var m = score.firstMeasure; m; m = m.nextMeasure) {
+        n++;
+        if (sysKey(m) === key) {
+            first = first === null ? n : first;
+            last = n;
+        } else if (first !== null) {
+            break;
+        }
+    }
+    return { firstBar: first, lastBar: last };
+}
+
 function sysKey(measure) {
     var p = measure.parent.canvasPos;
     return p.x + "," + p.y;
 }
 
 // Expands the current score's range selection to whole bars.
-// Returns { t0, t1, staff }: ticks, and the top selected staff.
-// null when there is no score or no range selection.
+// Returns { t0, t1 } in ticks, or null when there is no score or no range selection.
 function selectedRange(eng) {
     var score = eng.curScore;
     var sel = score && score.selection;
@@ -42,7 +87,7 @@ function selectedRange(eng) {
             break;
         }
     }
-    return a === null ? null : { t0: a, t1: b, staff: sel.startStaff };
+    return a === null ? null : { t0: a, t1: b };
 }
 
 // Re-reads the positions of a system's points from the live layout.

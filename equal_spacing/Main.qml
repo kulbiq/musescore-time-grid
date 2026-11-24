@@ -12,8 +12,10 @@ ExtensionBlank {
 
     color: api.theme.backgroundPrimaryColor
 
-    property var range: null      // { t0, t1, staff } of the selection, snapped to whole bars
+    property var range: null      // { t0, t1 } of the selection, snapped to whole bars
     property var rows: []         // one entry per selected system, see Core.describe
+    property var image: null      // the selected image, see Core.selectedImage
+    property int barCount: 1      // how many bars from its anchor bar the image should span
     property string status: ""
     property bool keepBars: false   // false: bars of a too dense system move to the next line
 
@@ -41,9 +43,18 @@ ExtensionBlank {
     }
 
     function refresh(force) {
+        var nextImage = Core.selectedImage(api.engraving);
+        var sameImage = (!nextImage && !image) || (nextImage && image && nextImage.image.is(image.image));
+        if (!sameImage) {
+            barCount = 1;
+        }
+        if (!sameImage || force || (nextImage && (nextImage.bar !== image.bar
+                || nextImage.firstBar !== image.firstBar || nextImage.lastBar !== image.lastBar))) {
+            image = nextImage;
+        }
+
         var next = Core.selectedRange(api.engraving);
-        var same = (!next && !range)
-                || (next && range && next.t0 === range.t0 && next.t1 === range.t1 && next.staff === range.staff);
+        var same = (!next && !range) || (next && range && next.t0 === range.t0 && next.t1 === range.t1);
         if (same && !force) {
             return;
         }
@@ -51,9 +62,24 @@ ExtensionBlank {
         rows = next ? Core.describe(api.engraving, next) : [];
     }
 
+    // the bars of the "N bars" button: from the anchor bar, cut off where the system ends
+    function lastOfCount() {
+        return Math.min(image.bar + barCount - 1, image.lastBar);
+    }
+
+    function alignSelected(count) {
+        var res = Core.alignImage(api.engraving, image.image, count);
+        refresh(true);
+        status = Core.alignMessage(res);
+    }
+
     function summary() {
+        if (image) {
+            return "Image on bar " + image.bar + ", in the system of bars "
+                    + Core.barsLabel(image.firstBar, image.lastBar) + ".";
+        }
         if (!rows.length) {
-            return "Select the bars or the system to space, then press Make linear.";
+            return "Select the bars or the system to space, then press Make linear. Click an image to align it.";
         }
         var a = rows[0], b = rows[rows.length - 1];
         return "Bars " + Core.barsLabel(a.firstBar, b.lastBar) + "   " + clock(a.start) + " to " + clock(b.end)
@@ -61,7 +87,7 @@ ExtensionBlank {
     }
 
     // ponytail: polls the selection, the form API has no selection-changed signal.
-    // Only the selection range is read per tick, the table is rebuilt when it changes.
+    // Only the selection is read per tick, the table is rebuilt when it changes.
     Timer {
         interval: 300
         running: true
@@ -131,8 +157,8 @@ ExtensionBlank {
                       + "the first note of the row and the point where its time span ends. "
                       + "Make linear sets the score's spacing ratio style to 2. Unless bars are kept on their line, "
                       + "bars of a system that is too dense move to the next line. "
-                      + "To add an image, drag its file onto a note of the system, select that system's bars "
-                      + "on one staff and press Align image: it then spans From to To above the staff."
+                      + "To add an image, drag its file onto the bar it should start at, click it, "
+                      + "and align it to its whole system or to a number of bars."
             }
 
             // Hand-drawn: MuseApi.Controls' CheckBox fails to load in MuseScore 4.7.7
@@ -193,12 +219,48 @@ ExtensionBlank {
                 }
 
                 FlatButton {
-                    text: "Align image"
-                    enabled: root.rows.length === 1
+                    text: "Reset all"
+                    enabled: api.engraving.curScore !== null
                     onClicked: {
-                        var res = Core.alignImages(api.engraving, root.range);
-                        root.status = Core.alignMessage(res);
+                        var res = Core.resetAll(api.engraving);
+                        root.refresh(true);
+                        root.status = Core.resetAllMessage(res);
                     }
+                }
+            }
+
+            Row {
+                spacing: 12
+                visible: root.image !== null
+
+                FlatButton {
+                    text: root.image ? "Align to whole system (bars "
+                                       + Core.barsLabel(root.image.firstBar, root.image.lastBar) + ")" : ""
+                    accentButton: true
+                    onClicked: root.alignSelected(0)
+                }
+
+                FlatButton {
+                    text: "\u2212"
+                    enabled: root.barCount > 1
+                    onClicked: root.barCount--
+                }
+
+                StyledTextLabel {
+                    height: 30
+                    text: root.barCount + (root.barCount === 1 ? " bar" : " bars")
+                }
+
+                FlatButton {
+                    text: "+"
+                    enabled: root.image !== null && root.image.bar + root.barCount - 1 < root.image.lastBar
+                    onClicked: root.barCount++
+                }
+
+                FlatButton {
+                    text: root.image ? "Align to bar" + (root.barCount === 1 ? " " : "s ")
+                                       + Core.barsLabel(root.image.bar, root.lastOfCount()) : ""
+                    onClicked: root.alignSelected(root.barCount)
                 }
             }
         }
