@@ -8,7 +8,7 @@ ExtensionBlank {
     id: root
 
     implicitWidth: 620
-    implicitHeight: 420
+    implicitHeight: 480
 
     color: api.theme.backgroundPrimaryColor
 
@@ -229,8 +229,10 @@ ExtensionBlank {
                 }
             }
 
-            Row {
-                spacing: 12
+            // shown while an image is selected: align it to its whole system, or to a number of bars
+            // from its anchor bar
+            Column {
+                spacing: 8
                 visible: root.image !== null
 
                 FlatButton {
@@ -240,27 +242,33 @@ ExtensionBlank {
                     onClicked: root.alignSelected(0)
                 }
 
-                FlatButton {
-                    text: "\u2212"
-                    enabled: root.barCount > 1
-                    onClicked: root.barCount--
-                }
+                Row {
+                    spacing: 8
 
-                StyledTextLabel {
-                    height: 30
-                    text: root.barCount + (root.barCount === 1 ? " bar" : " bars")
-                }
+                    FlatButton {
+                        text: "\u2212"
+                        enabled: root.barCount > 1
+                        onClicked: root.barCount--
+                    }
 
-                FlatButton {
-                    text: "+"
-                    enabled: root.image !== null && root.image.bar + root.barCount - 1 < root.image.lastBar
-                    onClicked: root.barCount++
-                }
+                    StyledTextLabel {
+                        width: 56
+                        height: 30
+                        verticalAlignment: Text.AlignVCenter
+                        text: root.barCount + (root.barCount === 1 ? " bar" : " bars")
+                    }
 
-                FlatButton {
-                    text: root.image ? "Align to bar" + (root.barCount === 1 ? " " : "s ")
-                                       + Core.barsLabel(root.image.bar, root.lastOfCount()) : ""
-                    onClicked: root.alignSelected(root.barCount)
+                    FlatButton {
+                        text: "+"
+                        enabled: root.image !== null && root.image.bar + root.barCount - 1 < root.image.lastBar
+                        onClicked: root.barCount++
+                    }
+
+                    FlatButton {
+                        text: root.image ? "Align to bar" + (root.barCount === 1 ? " " : "s ")
+                                           + Core.barsLabel(root.image.bar, root.lastOfCount()) : ""
+                        onClicked: root.alignSelected(root.barCount)
+                    }
                 }
             }
         }

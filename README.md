@@ -32,7 +32,7 @@ The checkbox "Keep bars on their line" decides what happens then.
   The result is exact, but the systems change, and a system that gave up bars is locked so they stay off it.
 - Checked: the system is locked so every bar stays, and notes are put on the grid anyway.
   Notes and accidentals can end up closer than MuseScore normally allows.
-  The barline moves up to the previous note and the downbeat moves up to the barline.
+  The barline moves up to the previous note and the downbeat moves up to the barline, or to the time or key signature after it.
   If a bar ends on a note too short to leave room for a barline at all, the system is left unchanged.
 
 Systems that cannot be made linear either way are left unchanged and named in the dialog.
@@ -101,5 +101,5 @@ It checks both modes: with bars kept, no bar may change system and the notes mus
 With bars allowed to move, every note must be within 0.01 staff spaces, also after saving and reloading the file.
 The test score also has freshly dropped images on the first notes of bars 1 and 15, the dense one (`tests/add_image.py`).
 Both are aligned before the spacing runs and must span their bars within 0.01 staff spaces; the spacing must then give the same results as without them.
-After the reload, Reset all must restore the score, and Make linear must work on bars whose image was just dropped.
+After the reload, Reset all must restore the score, and Make linear must work on bars whose image was just dropped, and on a line with a time signature change in its middle, without the downbeat running into the signature.
 Before and after PNGs are written to `tests/out`.
