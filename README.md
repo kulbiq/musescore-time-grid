@@ -30,10 +30,9 @@ The checkbox "Keep bars on their line" decides what happens then.
 
 - Unchecked (default): the last bars of that system move to the next line until the rest fits.
   The result is exact, but the systems change, and a system that gave up bars is locked so they stay off it.
-- Checked: the system is locked so every bar stays, and notes are put on the grid anyway.
-  Notes and accidentals can end up closer than MuseScore normally allows.
-  The barline moves up to the previous note and the downbeat moves up to the barline, or to the time or key signature after it.
-  If a bar ends on a note too short to leave room for a barline at all, the system is left unchanged.
+- Checked: the system is locked so every bar stays, and every note is put on the grid, however dense the bars are.
+  Notes, accidentals, barlines and time or key signatures may run into each other: the barline may go right up to the note before it, and the downbeat right up to the barline.
+  Only their order is kept.
 
 Systems that cannot be made linear either way are left unchanged and named in the dialog.
 
@@ -97,7 +96,7 @@ A range is `{ t0, t1 }` in ticks, a "system" is one system's part of the selecti
 `node --test tests/*.test.js` checks the grid math in a fraction of a second, without MuseScore.
 
 `tests/run.sh` runs those, then runs the extension through the real MuseScore binary on a generated score.
-It checks both modes: with bars kept, no bar may change system and the notes must be within 0.1 staff spaces of the grid.
+It checks both modes: with bars kept, no bar may change system and every note, the dense bar's too, must be within 0.1 staff spaces of the grid.
 With bars allowed to move, every note must be within 0.01 staff spaces, also after saving and reloading the file.
 The test score also has freshly dropped images on the first notes of bars 1 and 15, the dense one (`tests/add_image.py`).
 Both are aligned before the spacing runs and must span their bars within 0.01 staff spaces; the spacing must then give the same results as without them.

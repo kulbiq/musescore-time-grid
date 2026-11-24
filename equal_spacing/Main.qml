@@ -186,7 +186,7 @@ ExtensionBlank {
                 StyledTextLabel {
                     height: 20
                     horizontalAlignment: Text.AlignLeft
-                    text: "Keep bars on their line (very dense notes may overlap)"
+                    text: "Keep bars on their line (dense notes, barlines and signatures may overlap)"
                 }
 
                 TapHandler {

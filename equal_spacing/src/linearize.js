@@ -15,7 +15,7 @@
 //    - move bars: lock the system to all but its last bar, so that bar moves to the next line,
 //      and repeat until the rest fits. Exact, but systems change and stay locked.
 //    - keep bars: lock the system so its bars stay, and put the notes on the grid anyway,
-//      closer than the minimum distance. Notes can overlap.
+//      closer than the minimum distance. Notes, barlines and signatures can overlap.
 //
 // The geometry is in grid.js, reading the layout in layout.js. This file writes to the score.
 
@@ -54,8 +54,8 @@ function resetStretch(m) {
 // Changes the gap before point i by `change` spatium, as splitGap decides.
 // Returns false when the change is too small to act on. True does not mean anything was
 // written: across a barline there may be no room left.
-function applyGap(p, i, change) {
-    var split = p[i].carrier ? splitGap(p, i, change) : null;
+function applyGap(p, i, change, collapse) {
+    var split = p[i].carrier ? splitGap(p, i, change, collapse) : null;
     if (!split) {
         return false;
     }
@@ -75,13 +75,13 @@ function applyGap(p, i, change) {
 // Fast correction of a whole system at once: feeds each gap's error into its carrier.
 // Exact when the system has room to spare, which settles most systems in two passes.
 // Expects a fresh snapshot.
-function correct(sys) {
+function correct(sys, collapse) {
     var p = sys.points;
     if (p.length < 3) {
         return;
     }
     for (var i = 1; i < p.length; i++) {
-        applyGap(p, i, gapError(p, i));
+        applyGap(p, i, gapError(p, i), collapse);
     }
 }
 
@@ -89,12 +89,12 @@ function correct(sys) {
 // right, with a fresh layout after every change. In a tight system a carrier also changes the
 // gap after it, which makes correct() overshoot. Going in order absorbs that.
 // Returns the system's remaining error.
-function sweep(sys, relayout) {
+function sweep(sys, relayout, collapse) {
     var p = sys.points;
     for (var round = 0; round < SWEEPS; round++) {
         for (var i = 1; i < p.length; i++) {
             snapshot(sys);
-            if (applyGap(p, i, gapError(p, i))) {
+            if (applyGap(p, i, gapError(p, i), collapse)) {
                 relayout();
             }
         }
@@ -128,7 +128,8 @@ function moveBars(score, systems) {
 
 // One attempt at the current system layout. Lays out, then corrects every system that is not
 // in `skip` (a predicate). Returns the systems, each with .error set (Infinity for skipped ones).
-function attempt(eng, range, relayout, skip) {
+// collapse: see splitGap.
+function attempt(eng, range, relayout, skip, collapse) {
     var systems;
     for (var pass = 0; pass < PASSES; pass++) {
         relayout();
@@ -137,14 +138,16 @@ function attempt(eng, range, relayout, skip) {
         if (maxError(todo) < TOLERANCE || pass === PASSES - 1) {
             break;
         }
-        todo.forEach(correct);
+        todo.forEach(function (sys) {
+            correct(sys, collapse);
+        });
     }
     systems.forEach(function (sys) {
         sys.error = skip(sys, -1) ? Infinity : gridError(sys.points);
         if (sys.error >= TOLERANCE && sys.error < Infinity) {
-            sys.error = sweep(sys, relayout);
+            sys.error = sweep(sys, relayout, collapse);
         }
-        if (!barlinesFit(snapshot(sys).points)) {
+        if (!barlinesFit(snapshot(sys).points, collapse)) {
             sys.error = Infinity;
         }
     });
@@ -153,7 +156,8 @@ function attempt(eng, range, relayout, skip) {
 
 // Makes spacing linear in range { t0, t1 } of the current score.
 // options.keepBars false: bars of a too dense system move to the next line.
-// options.keepBars true: every bar stays on its system, notes may end up closer than MuseScore allows.
+// options.keepBars true: every bar stays on its system and every note goes on the grid, however
+// dense: notes, barlines and signatures may run into each other, only their order is kept.
 // Returns { error, failed }: the worst remaining error in spatium among the systems that worked,
 // and the systems that could not be made linear and were left alone, as [{ firstBar, lastBar }].
 // Runs as a single undoable command.
@@ -195,7 +199,7 @@ function linearize(eng, range, options) {
     }
     for (var round = 0; round < (keepBars ? 1 : MAX_ROUNDS); round++) {
         clearLeading(score, range);
-        systems = attempt(eng, range, relayout, skipDense);
+        systems = attempt(eng, range, relayout, skipDense, keepBars);
         var bad = systems.filter(function (sys) { return sys.error >= tolerance; });
         if (keepBars || !bad.length || !moveBars(score, bad)) {
             break;

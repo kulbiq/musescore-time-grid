@@ -90,42 +90,54 @@ function tooDense(p) {
 // leading space only moves the barline. The group's leading space then moves signature and
 // downbeat together instead, and the barline follows: it is put BARLINE_BEFORE_GROUP before the
 // group. Both measured on the current layout, so repeated passes settle them.
-function splitGap(p, i, change) {
+//
+// collapse (keep bars) drops the clearances: the barline may go right up to the previous note,
+// and the downbeat right up to the barline, onto any signature after it. The order stays:
+// the barline never passes the previous note, the downbeat never passes the barline.
+function splitGap(p, i, change, collapse) {
     if (Math.abs(change) <= TOLERANCE / 4) {
         return null;
     }
     if (p[i].sameBar || !p[i].isNote) {  // same bar, or the closing point is the final barline
         return { carrier: change, group: 0, note: 0 };
     }
-    var cx = p[i].carrierX, limit = p[i - 1].x + BARLINE_CLEARANCE;
-    var before = p[i].beforeX === undefined ? cx : p[i].beforeX;
-    var left = p[i].leftX === undefined ? p[i].x : p[i].leftX;
+    var cx = p[i].carrierX, limit = p[i - 1].x + (collapse ? 0 : BARLINE_CLEARANCE);
+    var before = collapse || p[i].beforeX === undefined ? cx : p[i].beforeX;
+    var left = collapse || p[i].leftX === undefined ? p[i].x : p[i].leftX;
+    var noteAfter = collapse ? 0 : NOTE_AFTER_BARLINE;
     // widen: first give the downbeat its normal distance back
     var back = change > 0 ? Math.min(change, Math.max(0, -p[i].leading)) : 0;
     if (p[i].hasGroup) {
         var viaGroup = change > 0 ? change - back
             : Math.max(change, -Math.max(0, p[i].groupX - BARLINE_BEFORE_GROUP - limit));
         var noteMove = change > 0 ? back
-            : Math.max(change - viaGroup, -Math.max(0, left - before - NOTE_AFTER_BARLINE));
+            : Math.max(change - viaGroup, -Math.max(0, left - before - noteAfter));
         return { carrier: p[i].groupX + viaGroup - BARLINE_BEFORE_GROUP - cx, group: viaGroup, note: noteMove };
     }
     if (change > 0) {
         return { carrier: change - back, group: 0, note: back };
     }
     var viaBarline = Math.max(change, -Math.max(0, cx - limit));
-    var viaNote = Math.max(change - viaBarline, -Math.max(0, left - before - NOTE_AFTER_BARLINE));
+    var viaNote = Math.max(change - viaBarline, -Math.max(0, left - before - noteAfter));
     return { carrier: viaBarline, group: 0, note: viaNote };
 }
 
 // False when a barline (or anything else that sits between two notes) has been pushed out of
 // its place: onto the note before it or past the downbeat after it, or when the downbeat has
 // run into what sits right before it, such as a time signature.
-function barlinesFit(p) {
+// With collapse (keep bars), only the order counts: the barline must lie between the two notes.
+function barlinesFit(p, collapse) {
     for (var i = 1; i < p.length; i++) {
         if (p[i].sameBar) {
             continue;
         }
         var x = p[i].carrierX;
+        if (collapse) {
+            if (x < p[i - 1].x - 0.01 || x > p[i].x + 0.01) {
+                return false;
+            }
+            continue;
+        }
         if (x < p[i - 1].x + BARLINE_CLEARANCE - 0.01 || x > p[i].x || p[i].leftX < p[i].beforeX - 0.01
                 || x > p[i].groupX - BARLINE_BEFORE_GROUP / 2) {
             return false;

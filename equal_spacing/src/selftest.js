@@ -61,10 +61,11 @@ function selftest() {
     // bars 2-3 only: one system closed by its final barline, one by the next note
     var part = linearize(eng, { t0: WHOLE_TICKS, t1: 3 * WHOLE_TICKS }, { keepBars: true });
 
-    // keep bars: no bar may change system, the bars before the dense one must be linear
+    // keep bars: no bar may change system, and every bar must be linear, the dense one too:
+    // its notes, barline and signatures may run into each other
     var systems = systemsOf(eng);
     var kept = linearize(eng, whole, { keepBars: true });
-    var keptError = maxError(collect(eng, beforeDense));
+    var keptError = maxError(collect(eng, whole));
     var keptSystems = systemsOf(eng);
 
     // move bars: everything must be linear, and the dense system must have lost bars
@@ -76,7 +77,7 @@ function selftest() {
                  + " keepBars=" + JSON.stringify(kept) + " err=" + keptError.toFixed(4) + " systems=" + systems + " -> " + keptSystems
                  + " move=" + JSON.stringify(mv) + " err=" + mvError.toFixed(4) + " systems=" + mvSystems);
     ok = ok && before > 1 && part.failed.length === 0 && part.error < TOLERANCE
-        && keptError < KEEP_BARS_TOLERANCE && keptSystems === systems
+        && kept.failed.length === 0 && keptError < KEEP_BARS_TOLERANCE && keptSystems === systems
         && mv.failed.length === 0 && mvError < TOLERANCE && mvSystems !== systems;
 
     // what the dialog shows: one row per system, each moving forward in time and space
