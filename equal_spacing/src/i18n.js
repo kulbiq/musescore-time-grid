@@ -28,24 +28,15 @@ var TRANSLATIONS = {
         "Close": "Zamknij",
         "From": "Od",
         "To": "Do",
-        ["Make linear puts every note of the selected bars on an even time grid (the thin lines, one "
-            + "per beat): a note twice as long gets twice the room. It also sets the score's spacing "
-            + "ratio style to 2, Reset all puts it back."]:
-            "Wyrównaj liniowo ustawia każdą nutę zaznaczonych taktów na równej siatce czasu (cienkie linie, "
-            + "jedna na każdą miarę): dwa razy dłuższa nuta dostaje dwa razy więcej miejsca. Zmienia też "
-            + "w stylu partytury proporcję odstępów na 2, Resetuj wszystko ją przywraca.",
-        ["From and To, also in the table: a line's first note and the point where its time ends, "
-            + "measured from the left page edge."]:
-            "Od i Do, także w tabeli: pierwsza nuta linii i punkt, w którym kończy się jej czas, liczone "
-            + "od lewej krawędzi strony.",
-        ["When a line is too dense for this, its last bars move to the next line, unless bars are "
-            + "kept on their line."]:
-            "Gdy linia jest na to zbyt gęsta, jej ostatnie takty przechodzą do następnej, chyba że takty "
-            + "mają zostać na swojej linii.",
-        ["To add a picture, drag its file onto the bar it should start at, click it and align it: "
-            + "it then spans From to To, above the staff."]:
-            "Żeby dodać obrazek, przeciągnij jego plik na takt, od którego ma się zaczynać, kliknij go "
-            + "i wyrównaj: obejmie wtedy odcinek Od-Do, nad pięciolinią.",
+        "your picture": "twój obrazek",
+        "Make linear puts the notes on an even time grid (spacing ratio 2).":
+            "Wyrównaj liniowo stawia nuty na równej siatce czasu (proporcja odstępów 2).",
+        "From and To in the table are measured from the left page edge.":
+            "Od i Do w tabeli liczone są od lewej krawędzi strony.",
+        "A line too dense for this gives bars to the next one, unless bars are kept.":
+            "Zbyt gęsta linia oddaje takty następnej, chyba że takty mają zostać.",
+        "A picture: drag its file onto its first bar, click it, align it.":
+            "Obrazek: przeciągnij plik na jego pierwszy takt, kliknij i wyrównaj.",
         "Reset": "Resetuj",
         "Reset all": "Resetuj wszystko",
         "Removed the spacing adjustments from the selection.": "Usunięto zmiany odstępów z zaznaczenia.",

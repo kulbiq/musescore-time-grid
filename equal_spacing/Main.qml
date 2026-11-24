@@ -305,9 +305,15 @@ ExtensionBlank {
             height: content.height + 32
             radius: 6
             color: api.theme.backgroundPrimaryColor
-            border.width: 1
-            border.color: Qt.rgba(api.theme.fontPrimaryColor.r, api.theme.fontPrimaryColor.g,
-                                  api.theme.fontPrimaryColor.b, 0.25)
+
+            Rectangle {   // a faint outline
+                anchors.fill: parent
+                radius: parent.radius
+                color: "transparent"
+                border.width: 1
+                border.color: api.theme.fontPrimaryColor
+                opacity: 0.25
+            }
 
             MouseArea {   // keeps clicks on the card from closing it
                 anchors.fill: parent
@@ -375,7 +381,7 @@ ExtensionBlank {
                             }
                         }
 
-                        Text {
+                        StyledTextLabel {
                             x: Math.round(figure.beatX(0) - width / 2)
                             y: Math.round(figure.fy(Core.FIGURE.staffBottom)) + 6
                             color: api.theme.accentColor
@@ -383,27 +389,31 @@ ExtensionBlank {
                             text: Core.tr("From")
                         }
 
-                        Text {
+                        StyledTextLabel {
                             x: Math.round(figure.beatX(Core.FIGURE.beats)) - width
                             y: Math.round(figure.fy(Core.FIGURE.staffBottom)) + 6
                             color: api.theme.accentColor
                             font.bold: true
                             text: Core.tr("To")
                         }
+
+                        // left of the picture, where the clef leaves room
+                        StyledTextLabel {
+                            x: Math.round(figure.beatX(0)) - width - 8
+                            y: Math.round(figure.fy((Core.FIGURE.pictureTop + Core.FIGURE.pictureBottom) / 2) - height / 2)
+                            color: "#555555"
+                            horizontalAlignment: Text.AlignRight
+                            text: Core.tr("your picture")
+                        }
                     }
                 }
 
                 Repeater {
                     model: [
-                        Core.tr("Make linear puts every note of the selected bars on an even time grid (the thin lines, one "
-                                + "per beat): a note twice as long gets twice the room. It also sets the score's spacing "
-                                + "ratio style to 2, Reset all puts it back."),
-                        Core.tr("From and To, also in the table: a line's first note and the point where its time ends, "
-                                + "measured from the left page edge."),
-                        Core.tr("When a line is too dense for this, its last bars move to the next line, unless bars are "
-                                + "kept on their line."),
-                        Core.tr("To add a picture, drag its file onto the bar it should start at, click it and align it: "
-                                + "it then spans From to To, above the staff.")
+                        Core.tr("Make linear puts the notes on an even time grid (spacing ratio 2)."),
+                        Core.tr("From and To in the table are measured from the left page edge."),
+                        Core.tr("A line too dense for this gives bars to the next one, unless bars are kept."),
+                        Core.tr("A picture: drag its file onto its first bar, click it, align it.")
                     ]
 
                     Row {
