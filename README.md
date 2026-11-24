@@ -54,6 +54,13 @@ It sits 1 staff space above the staff, or above the highest note if that is high
   If it runs into the system above, add space with a staff spacer or in the staff properties.
 - Make linear and Reset do not move images: align an image again after changing the spacing.
 
+## Languages
+
+The dialog speaks English and Polish, following MuseScore's language (Preferences > General > Language).
+MuseScore cannot load an extension's own translation files, so the texts live in `equal_spacing/src/i18n.js`, keyed by their English text, and the extension picks them by the language MuseScore sets for Qt.
+To add a language, add its table and plural rule there; `node --test tests/` then reports every text still missing.
+The menu entry "Equal Spacing" stays English: `manifest.json` titles cannot be translated.
+
 ## What it changes in the score
 
 - Style > Measure > Spacing ratio is set to 2 for the whole score, which makes note spacing proportional to duration.
@@ -86,6 +93,7 @@ Every function in `src` therefore shares one global scope.
 - `linearize.js`: `linearize(eng, range, { keepBars })`, `reset(eng, range)` and `resetAll(eng)`.
 - `image.js`: `selectedImage(eng)` and `alignImage(eng, image, barCount)`, plus `releaseImages` for Make linear.
 - `report.js`: what the dialog shows (`describe`, `barsLabel` and the status messages).
+- `i18n.js`: `tr` and `trn`, the translations of every text the dialog shows.
 - `selftest.js`: the headless actions `selftest`, `verify` and `all`.
 
 `Main.qml` calls only these and the `*Message` functions: `selectedRange`, `selectedImage`, `describe`, `barsLabel`, `linearize`, `reset`, `resetAll` and `alignImage`.
@@ -93,7 +101,7 @@ A range is `{ t0, t1 }` in ticks, a "system" is one system's part of the selecti
 
 ## Test
 
-`node --test tests/*.test.js` checks the grid math in a fraction of a second, without MuseScore.
+`node --test tests/*.test.js` checks the grid math and the translations in a fraction of a second, without MuseScore.
 
 `tests/run.sh` runs those, then runs the extension through the real MuseScore binary on a generated score.
 It checks both modes: with bars kept, no bar may change system and every note, the dense bar's too, must be within 0.1 staff spaces of the grid.

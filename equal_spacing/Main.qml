@@ -20,12 +20,12 @@ ExtensionBlank {
     property bool keepBars: false   // false: bars of a too dense system move to the next line
 
     readonly property var columns: [
-        { title: "Bars", width: 76 },
-        { title: "Start", width: 92 },
-        { title: "End", width: 92 },
-        { title: "Duration", width: 92 },
-        { title: "From (mm)", width: 92 },
-        { title: "To (mm)", width: 92 }
+        { title: Core.tr("Bars"), width: 76 },
+        { title: Core.tr("Start"), width: 92 },
+        { title: Core.tr("End"), width: 92 },
+        { title: Core.tr("Duration"), width: 92 },
+        { title: Core.tr("From (mm)"), width: 92 },
+        { title: Core.tr("To (mm)"), width: 92 }
     ]
 
     function clock(sec) {
@@ -75,15 +75,15 @@ ExtensionBlank {
 
     function summary() {
         if (image) {
-            return "Image on bar " + image.bar + ", in the system of bars "
-                    + Core.barsLabel(image.firstBar, image.lastBar) + ".";
+            return Core.tr("Image on bar %1, in the system of bars %2.", image.bar,
+                           Core.barsLabel(image.firstBar, image.lastBar));
         }
         if (!rows.length) {
-            return "Select the bars or the system to space, then press Make linear. Click an image to align it.";
+            return Core.tr("Select the bars or the system to space, then press Make linear. Click an image to align it.");
         }
         var a = rows[0], b = rows[rows.length - 1];
-        return "Bars " + Core.barsLabel(a.firstBar, b.lastBar) + "   " + clock(a.start) + " to " + clock(b.end)
-                + "   duration " + (b.end - a.start).toFixed(3) + " s";
+        return Core.tr("Bars %1   %2 to %3   duration %4 s", Core.barsLabel(a.firstBar, b.lastBar),
+                       clock(a.start), clock(b.end), (b.end - a.start).toFixed(3));
     }
 
     // ponytail: polls the selection, the form API has no selection-changed signal.
@@ -153,12 +153,11 @@ ExtensionBlank {
                 wrapMode: Text.WordWrap
                 opacity: 0.7
                 text: root.status !== "" ? root.status
-                    : "One row per system. From and To are measured from the left page edge: "
-                      + "the first note of the row and the point where its time span ends. "
-                      + "Make linear sets the score's spacing ratio style to 2. Unless bars are kept on their line, "
-                      + "bars of a system that is too dense move to the next line. "
-                      + "To add an image, drag its file onto the bar it should start at, click it, "
-                      + "and align it to its whole system or to a number of bars."
+                    : Core.tr("One row per system. From and To are measured from the left page edge: the first note of the row "
+                              + "and the point where its time span ends. Make linear sets the score's spacing ratio style to 2. "
+                              + "Unless bars are kept on their line, bars of a system that is too dense move to the next line. "
+                              + "To add an image, drag its file onto the bar it should start at, click it, and align it to its "
+                              + "whole system or to a number of bars.")
             }
 
             // Hand-drawn: MuseApi.Controls' CheckBox fails to load in MuseScore 4.7.7
@@ -186,7 +185,7 @@ ExtensionBlank {
                 StyledTextLabel {
                     height: 20
                     horizontalAlignment: Text.AlignLeft
-                    text: "Keep bars on their line (dense notes, barlines and signatures may overlap)"
+                    text: Core.tr("Keep bars on their line (dense notes, barlines and signatures may overlap)")
                 }
 
                 TapHandler {
@@ -198,7 +197,7 @@ ExtensionBlank {
                 spacing: 12
 
                 FlatButton {
-                    text: "Make linear"
+                    text: Core.tr("Make linear")
                     accentButton: true
                     enabled: root.range !== null
                     onClicked: {
@@ -209,17 +208,17 @@ ExtensionBlank {
                 }
 
                 FlatButton {
-                    text: "Reset"
+                    text: Core.tr("Reset")
                     enabled: root.range !== null
                     onClicked: {
                         Core.reset(api.engraving, root.range);
                         root.refresh(true);
-                        root.status = "Removed the spacing adjustments from the selection.";
+                        root.status = Core.tr("Removed the spacing adjustments from the selection.");
                     }
                 }
 
                 FlatButton {
-                    text: "Reset all"
+                    text: Core.tr("Reset all")
                     enabled: api.engraving.curScore !== null
                     onClicked: {
                         var res = Core.resetAll(api.engraving);
@@ -236,8 +235,8 @@ ExtensionBlank {
                 visible: root.image !== null
 
                 FlatButton {
-                    text: root.image ? "Align to whole system (bars "
-                                       + Core.barsLabel(root.image.firstBar, root.image.lastBar) + ")" : ""
+                    text: root.image ? Core.tr("Align to whole system (bars %1)",
+                                               Core.barsLabel(root.image.firstBar, root.image.lastBar)) : ""
                     accentButton: true
                     onClicked: root.alignSelected(0)
                 }
@@ -252,10 +251,10 @@ ExtensionBlank {
                     }
 
                     StyledTextLabel {
-                        width: 56
+                        width: 76
                         height: 30
                         verticalAlignment: Text.AlignVCenter
-                        text: root.barCount + (root.barCount === 1 ? " bar" : " bars")
+                        text: Core.trn("%n bar", root.barCount)
                     }
 
                     FlatButton {
@@ -265,8 +264,9 @@ ExtensionBlank {
                     }
 
                     FlatButton {
-                        text: root.image ? "Align to bar" + (root.barCount === 1 ? " " : "s ")
-                                           + Core.barsLabel(root.image.bar, root.lastOfCount()) : ""
+                        text: !root.image ? ""
+                            : root.barCount === 1 ? Core.tr("Align to bar %1", root.image.bar)
+                            : Core.tr("Align to bars %1", Core.barsLabel(root.image.bar, root.lastOfCount()))
                         onClicked: root.alignSelected(root.barCount)
                     }
                 }

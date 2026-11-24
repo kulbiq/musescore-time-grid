@@ -49,27 +49,30 @@ function describe(eng, range) {
 // The status line after Make linear, from the { error, failed } that linearize returns.
 function resultMessage(eng, result) {
     if (result.failed.length) {
-        return "Could not make these bars linear, they are unchanged: "
-            + result.failed.map(function (f) { return barsLabel(f.firstBar, f.lastBar); }).join(", ") + ".";
+        return tr("Could not make these bars linear, they are unchanged: %1.",
+                  result.failed.map(function (f) { return barsLabel(f.firstBar, f.lastBar); }).join(", "));
     }
     var off = (result.error * mmPerSpatium(eng.curScore)).toFixed(2);
-    return "Done. Every note in the selection is within " + off + " mm of a linear time grid.";
+    return tr("Done. Every note in the selection is within %1 mm of a linear time grid.", off);
 }
 
 // The status line after Align image, from the { aligned, firstBar, lastBar } of alignImage.
 function alignMessage(result) {
-    var bars = "bar" + (result.firstBar === result.lastBar ? " " : "s ") + barsLabel(result.firstBar, result.lastBar);
+    var one = result.firstBar === result.lastBar, bars = barsLabel(result.firstBar, result.lastBar);
     if (!result.aligned) {
-        return "Could not align the image to " + bars + ": its staff has no notes there.";
+        return one ? tr("Could not align the image to bar %1: its staff has no notes there.", bars)
+                   : tr("Could not align the image to bars %1: its staff has no notes there.", bars);
     }
-    return "Image aligned to " + bars + ": from the first note to the end of their time span, above the staff.";
+    return one
+        ? tr("Image aligned to bar %1: from the first note to the end of its time span, above the staff.", bars)
+        : tr("Image aligned to bars %1: from the first note to the end of their time span, above the staff.", bars);
 }
 
 // The status line after Reset all, from the { restored } of resetAll.
 function resetAllMessage(result) {
     return result.restored
-        ? "Reset the whole score: spacing adjustments removed, spacing ratio and system locks as before."
-        : "Removed all spacing adjustments. The spacing ratio and system locks from before were not recorded "
-          + "(spaced by an older version of this extension): reset them in Format > Style and "
-          + "Format > Add/remove system locks.";
+        ? tr("Reset the whole score: spacing adjustments removed, spacing ratio and system locks as before.")
+        : tr("Removed all spacing adjustments. The spacing ratio and system locks from before were not recorded "
+             + "(spaced by an older version of this extension): reset them in Format > Style and "
+             + "Format > Add/remove system locks.");
 }
