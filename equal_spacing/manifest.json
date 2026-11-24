@@ -4,7 +4,6 @@
     "title": "Equal Spacing",
     "description": "Spaces the selected bars linearly in time, so a linear time scale lines up with the music.",
     "version": "1.0.0",
-
     "actions": [
         {
             "code": "dialog",
@@ -36,6 +35,14 @@
             "show_on_appmenu": false,
             "path": "core.js",
             "func": "all"
+        },
+        {
+            "code": "keepall",
+            "type": "macros",
+            "title": "Equal Spacing self-test (keep bars)",
+            "show_on_appmenu": false,
+            "path": "core.js",
+            "func": "keepAll"
         }
     ]
 }

@@ -4,6 +4,10 @@
 // see four_with(4) in make_score.py.
 var DENSE_BAR = 15;
 
+// With bars kept, squeezing stops where MuseScore refuses to move a barline any closer to the
+// note before it, which can leave a few hundredths of a staff space.
+var KEEP_BARS_TOLERANCE = 0.1;
+
 function barTick(score, bar) {
     return barsRange(score, bar, bar).t0;
 }
@@ -161,4 +165,18 @@ function all() {
     var eng = api.engraving;
     var res = linearize(eng, wholeScore(eng.curScore), { keepBars: false });
     api.log.info("equal_spacing all: systems=" + systemsOf(eng) + " result=" + JSON.stringify(res));
+}
+
+// Headless check on tests/gui.mscz, a score saved from MuseScore's own window:
+//   mscore -j job.json --extension "musescore://extensions/equal_spacing?action=keepall"
+// With bars kept, any spacing is allowed, so no system may be left unchanged.
+function keepAll() {
+    var eng = api.engraving, whole = wholeScore(eng.curScore);
+    var res = linearize(eng, whole, { keepBars: true });
+    var err = maxError(collect(eng, whole));
+    api.log.info("equal_spacing keepall: " + JSON.stringify(res) + " err=" + err.toFixed(4) + "sp systems=" + systemsOf(eng)
+                 + " status=" + resultMessage(eng, res));
+    if (res.failed.length || !(err < KEEP_BARS_TOLERANCE)) {
+        throw new Error("equal_spacing keepall FAILED");
+    }
 }

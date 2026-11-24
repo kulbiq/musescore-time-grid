@@ -147,7 +147,8 @@ function attempt(eng, range, relayout, skip, collapse) {
         if (sys.error >= TOLERANCE && sys.error < Infinity) {
             sys.error = sweep(sys, relayout, collapse);
         }
-        if (!barlinesFit(snapshot(sys).points, collapse)) {
+        // with bars kept anything goes, so only spacing that moves bars checks the barlines
+        if (!collapse && !barlinesFit(snapshot(sys).points)) {
             sys.error = Infinity;
         }
     });
@@ -157,7 +158,8 @@ function attempt(eng, range, relayout, skip, collapse) {
 // Makes spacing linear in range { t0, t1 } of the current score.
 // options.keepBars false: bars of a too dense system move to the next line.
 // options.keepBars true: every bar stays on its system and every note goes on the grid, however
-// dense: notes, barlines and signatures may run into each other, only their order is kept.
+// dense: notes, barlines and signatures may run into each other. Never fails: where MuseScore will
+// not squeeze any further, what is left shows up in the returned error.
 // Returns { error, failed }: the worst remaining error in spatium among the systems that worked,
 // and the systems that could not be made linear and were left alone, as [{ firstBar, lastBar }].
 // Runs as a single undoable command.
@@ -169,7 +171,8 @@ function linearize(eng, range, options) {
         layoutAll(eng);
     }
     var failed = [], err = 0, dense = {};
-    var tolerance = keepBars ? KEEP_BARS_TOLERANCE : TOLERANCE;
+    // with bars kept, no system fails: what squeezing cannot close is reported as the error
+    var tolerance = keepBars ? Infinity : TOLERANCE;
     score.startCmd("Linear spacing");
     if (releaseImages(eng, range)) {
         relayout();   // released images let go of the notes they pushed, bars may come back

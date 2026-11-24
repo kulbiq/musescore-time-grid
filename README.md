@@ -32,9 +32,9 @@ The checkbox "Keep bars on their line" decides what happens then.
   The result is exact, but the systems change, and a system that gave up bars is locked so they stay off it.
 - Checked: the system is locked so every bar stays, and every note is put on the grid, however dense the bars are.
   Notes, accidentals, barlines and time or key signatures may run into each other: the barline may go right up to the note before it, and the downbeat right up to the barline.
-  Only their order is kept.
+  This never gives up on a system: MuseScore keeps a barline a few tenths of a staff space after the note before it, so in the densest spots a note can stay up to about 0.1 mm off the grid, and the dialog says how much.
 
-Systems that cannot be made linear either way are left unchanged and named in the dialog.
+Systems that cannot be made linear with bars moving are left unchanged and named in the dialog.
 
 ## Images
 
@@ -101,4 +101,5 @@ With bars allowed to move, every note must be within 0.01 staff spaces, also aft
 The test score also has freshly dropped images on the first notes of bars 1 and 15, the dense one (`tests/add_image.py`).
 Both are aligned before the spacing runs and must span their bars within 0.01 staff spaces; the spacing must then give the same results as without them.
 After the reload, Reset all must restore the score, and Make linear must work on bars whose image was just dropped, and on a line with a time signature change in its middle, without the downbeat running into the signature.
+Then it runs Make linear with bars kept on `tests/gui.mscz`, a score saved from MuseScore's own window: no system may be left unchanged, and every note must be within 0.1 staff spaces.
 Before and after PNGs are written to `tests/out`.

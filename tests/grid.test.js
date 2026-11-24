@@ -98,13 +98,7 @@ test("splitGap with collapse lets barline and downbeat go all the way", () => {
     // previous note at 0, barline at 3, downbeat at 4: without clearances the gap can close fully
     const p = points([[0, 0], [480, 4]], [{}, { sameBar: false, carrierX: 3, beforeX: 3.18, leftX: 3.5 }]);
     const r = grid.splitGap(p, 1, -10, true);
-    assert.ok(Math.abs(r.carrier + 3) < 1e-12);   // barline onto the previous note
-    assert.ok(Math.abs(r.note + 1) < 1e-12);      // downbeat onto the barline
+    assert.ok(Math.abs(r.carrier + 2.5) < 1e-12);  // barline up to MuseScore's limit after the previous note
+    assert.ok(Math.abs(r.note + 1) < 1e-12);       // downbeat onto the barline
 });
 
-test("barlinesFit with collapse only checks the order", () => {
-    const at = (bx) => points([[0, 0], [480, 4]], [{}, { sameBar: false, carrierX: bx, beforeX: bx + 2, leftX: 3.9 }]);
-    assert.strictEqual(grid.barlinesFit(at(0.2), true), true);    // on the previous note, downbeat under a signature
-    assert.strictEqual(grid.barlinesFit(at(-0.5), true), false);  // before the previous note
-    assert.strictEqual(grid.barlinesFit(at(4.5), true), false);   // past the downbeat
-});

@@ -22,6 +22,10 @@ test -f "$out/after.mscz" || { echo "FAILED: selftest"; exit 1; }
 "$M" -j "$out/job2.json" --extension "musescore://extensions/equal_spacing?action=verify" >/dev/null 2>&1 || true
 show
 test -f "$out/reloaded.mscz" || { echo "FAILED: spacing did not survive save and reload"; exit 1; }
+echo "[{\"in\":\"$PWD/tests/gui.mscz\",\"out\":\"$out/gui-kept.mscz\"}]" > "$out/job3.json"
+"$M" -j "$out/job3.json" --extension "musescore://extensions/equal_spacing?action=keepall" >/dev/null 2>&1 || true
+show
+test -f "$out/gui-kept.mscz" || { echo "FAILED: keep bars on gui.mscz"; exit 1; }
 "$M" -r 100 -o "$out/before.png" "$out/before.mscz" >/dev/null 2>&1
 "$M" -r 100 -o "$out/after.png" "$out/after.mscz" >/dev/null 2>&1
 echo "OK - see $out"

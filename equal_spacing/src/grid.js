@@ -19,11 +19,12 @@
 // The grid of a list of points is the line through its first and last point.
 
 var TOLERANCE = 0.01;     // spatium, about 0.02 mm at default staff size
-// With bars kept, squeezing stops where MuseScore refuses to move a barline any closer to its notes,
-// which leaves a few hundredths of a staff space. Accept that instead of failing.
-var KEEP_BARS_TOLERANCE = 0.1;
 var DENSE_SLACK = 0.05;        // spatium
 var BARLINE_CLEARANCE = 1.5;   // spatium a barline keeps from the start of the note before it
+// With bars kept: MuseScore itself stops a barline about 0.3 spatium after the note before it,
+// however negative its leading space. Pushing it into that floor achieves nothing and leaves the
+// rest of the change to the downbeat too late, so the barline stops just short of it.
+var COLLAPSED_BARLINE_CLEARANCE = 0.5;
 var NOTE_AFTER_BARLINE = 0.4;  // spatium a downbeat keeps from the barline before it
 // spatium from a barline to the time or key signature or clef after it, about MuseScore's own
 var BARLINE_BEFORE_GROUP = 0.8;
@@ -91,9 +92,8 @@ function tooDense(p) {
 // downbeat together instead, and the barline follows: it is put BARLINE_BEFORE_GROUP before the
 // group. Both measured on the current layout, so repeated passes settle them.
 //
-// collapse (keep bars) drops the clearances: the barline may go right up to the previous note,
-// and the downbeat right up to the barline, onto any signature after it. The order stays:
-// the barline never passes the previous note, the downbeat never passes the barline.
+// collapse (keep bars) drops the clearances: the barline may go up to MuseScore's own limit after
+// the previous note, and the downbeat right up to the barline, onto any signature after it.
 function splitGap(p, i, change, collapse) {
     if (Math.abs(change) <= TOLERANCE / 4) {
         return null;
@@ -101,7 +101,7 @@ function splitGap(p, i, change, collapse) {
     if (p[i].sameBar || !p[i].isNote) {  // same bar, or the closing point is the final barline
         return { carrier: change, group: 0, note: 0 };
     }
-    var cx = p[i].carrierX, limit = p[i - 1].x + (collapse ? 0 : BARLINE_CLEARANCE);
+    var cx = p[i].carrierX, limit = p[i - 1].x + (collapse ? COLLAPSED_BARLINE_CLEARANCE : BARLINE_CLEARANCE);
     var before = collapse || p[i].beforeX === undefined ? cx : p[i].beforeX;
     var left = collapse || p[i].leftX === undefined ? p[i].x : p[i].leftX;
     var noteAfter = collapse ? 0 : NOTE_AFTER_BARLINE;
@@ -125,19 +125,12 @@ function splitGap(p, i, change, collapse) {
 // False when a barline (or anything else that sits between two notes) has been pushed out of
 // its place: onto the note before it or past the downbeat after it, or when the downbeat has
 // run into what sits right before it, such as a time signature.
-// With collapse (keep bars), only the order counts: the barline must lie between the two notes.
-function barlinesFit(p, collapse) {
+function barlinesFit(p) {
     for (var i = 1; i < p.length; i++) {
         if (p[i].sameBar) {
             continue;
         }
         var x = p[i].carrierX;
-        if (collapse) {
-            if (x < p[i - 1].x - 0.01 || x > p[i].x + 0.01) {
-                return false;
-            }
-            continue;
-        }
         if (x < p[i - 1].x + BARLINE_CLEARANCE - 0.01 || x > p[i].x || p[i].leftX < p[i].beforeX - 0.01
                 || x > p[i].groupX - BARLINE_BEFORE_GROUP / 2) {
             return false;
