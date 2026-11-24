@@ -10,18 +10,11 @@ A note twice as long gets twice the room, and every beat is the same distance ap
 
 You need MuseScore Studio 4.7 or newer.
 
-1. Download `time_grid-<version>.zip` from the [Releases](../../releases) page and unzip it.
-   You get a folder called `time_grid`.
-2. Open MuseScore's extensions folder:
-   - **macOS:** in Finder, choose Go > Go to Folder, paste `~/Library/Application Support/MuseScore/MuseScore4/extensions` and press Return.
-   - **Windows:** paste `%LOCALAPPDATA%\MuseScore\MuseScore4\extensions` into the File Explorer address bar and press Enter.
-   - **Linux:** open `~/.local/share/MuseScore/MuseScore4/extensions`.
+1. Download `time_grid-<version>.mext` from the [Releases](../../releases) page.
+2. Drag it onto the MuseScore window.
+3. Go to Home > Plugins and enable **Time Grid**.
 
-   If the `extensions` folder does not exist yet, create it.
-3. Move the `time_grid` folder into it.
-4. Restart MuseScore, go to Home > Plugins and enable **Time Grid**.
-
-To update, replace the `time_grid` folder with the new one and restart MuseScore.
+To update, drag the newer `.mext` file onto MuseScore the same way.
 
 ## Use
 
@@ -59,7 +52,8 @@ If the picture runs into the line above, add space above the staff, for example 
 - `./install.sh` builds the extension into MuseScore's extensions folder (macOS).
   The files in `time_grid/src` are joined into one `core.js`.
 - `node --test tests/*.test.js` runs the unit tests, `tests/run.sh` the end-to-end tests in the real MuseScore.
-- `tools/release.sh` builds the release zip, `tools/make_figure.py` the help figure.
+- `tools/release.sh` builds the release file, a zip with `manifest.json` at its root named `.mext`, which MuseScore installs when it is dropped on its window.
+  `tools/make_figure.py` renders the help figure.
 - How it works is described at the top of each file in `time_grid/src`, starting with `linearize.js`.
 - Translations live in `time_grid/src/i18n.js`; the unit tests report every missing text.
 
