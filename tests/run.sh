@@ -26,6 +26,12 @@ echo "[{\"in\":\"$PWD/tests/gui.mscz\",\"out\":\"$out/gui-kept.mscz\"}]" > "$out
 "$M" -j "$out/job3.json" --extension "musescore://extensions/equal_spacing?action=keepall" >/dev/null 2>&1 || true
 show
 test -f "$out/gui-kept.mscz" || { echo "FAILED: keep bars on gui.mscz"; exit 1; }
+python3 tests/make_edge_score.py "$out/edges.musicxml"
+"$M" -o "$out/edges.mscz" "$out/edges.musicxml" >/dev/null 2>&1
+echo "[{\"in\":\"$out/edges.mscz\",\"out\":\"$out/edges-after.mscz\"}]" > "$out/job4.json"
+"$M" -j "$out/job4.json" --extension "musescore://extensions/equal_spacing?action=edges" >/dev/null 2>&1 || true
+show
+test -f "$out/edges-after.mscz" || { echo "FAILED: signatures and repeats"; exit 1; }
 "$M" -r 100 -o "$out/before.png" "$out/before.mscz" >/dev/null 2>&1
 "$M" -r 100 -o "$out/after.png" "$out/after.mscz" >/dev/null 2>&1
 echo "OK - see $out"

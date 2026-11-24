@@ -5,8 +5,8 @@
 var DENSE_BAR = 15;
 
 // With bars kept, squeezing stops where MuseScore refuses to move a barline any closer to the
-// note before it, which can leave a few hundredths of a staff space.
-var KEEP_BARS_TOLERANCE = 0.1;
+// note before it, which can leave a hundredth of a staff space.
+var KEEP_BARS_TOLERANCE = 0.02;
 
 function barTick(score, bar) {
     return barsRange(score, bar, bar).t0;
@@ -164,7 +164,16 @@ function verify() {
 function all() {
     var eng = api.engraving;
     var res = linearize(eng, wholeScore(eng.curScore), { keepBars: false });
-    api.log.info("equal_spacing all: systems=" + systemsOf(eng) + " result=" + JSON.stringify(res));
+    api.log.info("equal_spacing all: systems=" + systemsOf(eng) + " result=" + JSON.stringify(res)
+                 + " lines=" + lineReport(eng));
+}
+
+// Each system as bars:error in spatium, with ! where a barline or signature is out of its place.
+function lineReport(eng) {
+    return collect(eng, wholeScore(eng.curScore)).map(function (sys) {
+        return sys.firstBar + "-" + sys.lastBar + ":" + gridError(sys.points).toFixed(3)
+            + (barlinesFit(sys.points) ? "" : "!");
+    }).join(" ");
 }
 
 // Headless check on tests/gui.mscz, a score saved from MuseScore's own window:
@@ -174,9 +183,49 @@ function keepAll() {
     var eng = api.engraving, whole = wholeScore(eng.curScore);
     var res = linearize(eng, whole, { keepBars: true });
     var err = maxError(collect(eng, whole));
-    api.log.info("equal_spacing keepall: " + JSON.stringify(res) + " err=" + err.toFixed(4) + "sp systems=" + systemsOf(eng)
+    api.log.info("equal_spacing keepall: " + JSON.stringify(res) + " err=" + err.toFixed(4) + "sp lines=" + lineReport(eng)
                  + " status=" + resultMessage(eng, res));
     if (res.failed.length || !(err < KEEP_BARS_TOLERANCE)) {
         throw new Error("equal_spacing keepall FAILED");
+    }
+}
+
+// Headless check on the score from tests/make_edge_score.py, of what sits between notes in the
+// middle of a line: time signature, key and clef changes, repeats, many accidentals.
+//   mscore -j job.json --extension "musescore://extensions/equal_spacing?action=edges"
+function edges() {
+    var eng = api.engraving, score = eng.curScore, whole = wholeScore(score);
+
+    // keep bars: every line linear, however much has to overlap
+    var systems = systemsOf(eng);
+    var kept = linearize(eng, whole, { keepBars: true });
+    var keptError = maxError(collect(eng, whole));
+    api.log.info("equal_spacing edges keep: " + JSON.stringify(kept) + " err=" + keptError.toFixed(4) + " lines=" + lineReport(eng));
+    var ok = kept.failed.length === 0 && keptError < KEEP_BARS_TOLERANCE && systemsOf(eng) === systems;
+    resetAll(eng);
+
+    // two bars that fit on one line must stay on it with bars moving: the change between them may
+    // not count as too dense or out of place
+    [[2, 3, "time signature"], [6, 7, "clef in the middle of a bar"], [9, 10, "start repeat"],
+     [11, 12, "end and start repeat"]].forEach(function (c) {
+        var range = barsRange(score, c[0], c[1]);
+        score.startCmd("Bars " + c[0] + "-" + c[1] + " on one line");
+        score.makeIntoSystem(score.tick2measure(eng.fraction(range.t0, WHOLE_TICKS)),
+                             score.tick2measure(eng.fraction(barTick(score, c[1]), WHOLE_TICKS)));
+        score.endCmd();
+        var res = linearize(eng, range, { keepBars: false }), line = collect(eng, range);
+        var fine = res.failed.length === 0 && line.length === 1 && maxError(line) < TOLERANCE && barlinesFit(line[0].points);
+        api.log.info("equal_spacing edges " + c[2] + ": " + JSON.stringify(res) + " lines=" + lineReport(eng) + (fine ? "" : " FAILED"));
+        ok = ok && fine;
+        resetAll(eng);
+    });
+
+    // move bars: everything linear, nothing out of place
+    var mv = linearize(eng, whole, { keepBars: false }), lines = collect(eng, whole);
+    var fits = lines.every(function (sys) { return barlinesFit(sys.points); });
+    api.log.info("equal_spacing edges move: " + JSON.stringify(mv) + " lines=" + lineReport(eng));
+    ok = ok && mv.failed.length === 0 && maxError(lines) < TOLERANCE && fits;
+    if (!ok) {
+        throw new Error("equal_spacing edges FAILED");
     }
 }

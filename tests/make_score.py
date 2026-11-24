@@ -12,7 +12,7 @@ DIV = 4  # divisions per quarter
 
 
 def note(step, octave, dur, typ, staff, alter=None, dot=False, chord=False):
-    acc = {1: "sharp", -1: "flat", 0: "natural"}
+    acc = {1: "sharp", -1: "flat", 0: "natural", 2: "double-sharp", -2: "flat-flat"}
     return (
         "<note>"
         + ("<chord/>" if chord else "")

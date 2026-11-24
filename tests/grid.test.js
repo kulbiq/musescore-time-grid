@@ -1,4 +1,4 @@
-// Unit tests for the pure grid math, no MuseScore needed: node --test tests/
+// Unit tests for the pure grid math, no MuseScore needed: node --test tests/*.test.js
 // grid.js is a plain script (MuseScore loads it without modules), so it runs in a vm context.
 const test = require("node:test");
 const assert = require("node:assert");
@@ -67,9 +67,9 @@ test("barlinesFit catches a barline on the note before it or past the downbeat",
 });
 
 test("splitGap moves a time signature and its downbeat as a group, the barline follows", () => {
-    // previous note at 0, barline at 10, time signature from 10.8, downbeat at 13
+    // previous note at 0, barline at 10, time signature from 10.8 to 11.75, downbeat at 13
     const p = points([[0, 0], [480, 13]],
-        [{}, { sameBar: false, hasGroup: true, carrierX: 10, groupX: 10.8, beforeX: 12.5, leftX: 13 }]);
+        [{}, { sameBar: false, hasGroup: true, carrierX: 10, groupX: 10.8, beforeX: 11.75, leftX: 13 }]);
     const r = grid.splitGap(p, 1, -3);
     assert.ok(Math.abs(r.group + 3) < 1e-12);
     assert.ok(Math.abs(r.note) < 1e-12);
@@ -78,13 +78,23 @@ test("splitGap moves a time signature and its downbeat as a group, the barline f
 
 test("splitGap stops the group where the barline reaches the previous note", () => {
     const p = points([[0, 0], [480, 13]],
-        [{}, { sameBar: false, hasGroup: true, carrierX: 10, groupX: 10.8, beforeX: 12.5, leftX: 13 }]);
+        [{}, { sameBar: false, hasGroup: true, carrierX: 10, groupX: 10.8, beforeX: 11.75, leftX: 13 }]);
     // group may move until the barline is 1.5 after the note: 10.8 - 0.8 - 1.5 = 8.5,
-    // then the downbeat closes in on the signature: 13 - 12.5 - 0.4 = 0.1
+    // then the downbeat closes in on the signature: 13 - 11.75 - 0.4 = 0.85
     const r = grid.splitGap(p, 1, -20);
     assert.ok(Math.abs(r.group + 8.5) < 1e-12);
-    assert.ok(Math.abs(r.note + 0.1) < 1e-12);
+    assert.ok(Math.abs(r.note + 0.85) < 1e-12);
     assert.ok(Math.abs(r.carrier + 8.5) < 1e-12);
+});
+
+test("splitGap brings a group that ran ahead back to its downbeat", () => {
+    // the group moved left without the downbeat: signature 3 to 3.95, downbeat at 13, barline at 2.2
+    const p = points([[0, 0], [480, 13]],
+        [{}, { sameBar: false, hasGroup: true, carrierX: 2.2, groupX: 3, beforeX: 3.95, leftX: 13 }]);
+    const r = grid.splitGap(p, 1, -1);
+    assert.ok(Math.abs(r.group - 6.8) < 1e-12);         // to 12 - 1.25 - 0.95 = 9.8
+    assert.ok(Math.abs(r.group + r.note + 1) < 1e-12);  // the downbeat moves by the change
+    assert.ok(Math.abs(r.carrier - 6.8) < 1e-12);       // barline 0.8 before the group
 });
 
 test("barlinesFit catches a downbeat under a time signature", () => {
@@ -102,3 +112,21 @@ test("splitGap with collapse lets barline and downbeat go all the way", () => {
     assert.ok(Math.abs(r.note + 1) < 1e-12);       // downbeat onto the barline
 });
 
+
+test("noteShift moves the downbeat alone, up to the group before it", () => {
+    const p = points([[0, 0], [480, 13]],
+        [{}, { sameBar: false, hasGroup: true, carrierX: 10, groupX: 10.8, beforeX: 11.75, leftX: 13 }]);
+    assert.ok(Math.abs(grid.noteShift(p, 1, -0.3) + 0.3) < 1e-12);
+    assert.ok(Math.abs(grid.noteShift(p, 1, -5) + 0.85) < 1e-12);       // 13 - 11.75 - 0.4
+    assert.ok(Math.abs(grid.noteShift(p, 1, -5, true) + 3) < 1e-12);    // with collapse: onto the barline
+    assert.ok(Math.abs(grid.noteShift(p, 1, 2) - 2) < 1e-12);
+});
+
+test("noteAlone: the downbeat takes a change alone between the group and its natural distance", () => {
+    // group ends at 11.75, downbeat at 13: it may go from 12.15 to 13
+    const p = points([[0, 0], [480, 13]],
+        [{}, { sameBar: false, hasGroup: true, carrierX: 10, groupX: 10.8, beforeX: 11.75, leftX: 13 }]);
+    assert.strictEqual(grid.noteAlone(p, 1, -0.5), true);
+    assert.strictEqual(grid.noteAlone(p, 1, -1), false);    // would run into the group
+    assert.strictEqual(grid.noteAlone(p, 1, 0.5), false);   // would leave a hole after the group
+});

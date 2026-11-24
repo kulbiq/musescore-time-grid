@@ -43,6 +43,14 @@
             "show_on_appmenu": false,
             "path": "core.js",
             "func": "keepAll"
+        },
+        {
+            "code": "edges",
+            "type": "macros",
+            "title": "Equal Spacing self-test (signatures and repeats)",
+            "show_on_appmenu": false,
+            "path": "core.js",
+            "func": "edges"
         }
     ]
 }

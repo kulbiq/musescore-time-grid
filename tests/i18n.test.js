@@ -1,6 +1,6 @@
 // Checks the translations in equal_spacing/src/i18n.js against the texts the code asks for:
 // every tr() and trn() text has a translation in every language, none is left over, and the
-// placeholders match. Run with: node --test tests/
+// placeholders match. Run with: node --test tests/*.test.js
 const test = require("node:test");
 const assert = require("node:assert");
 const fs = require("node:fs");

@@ -12,9 +12,11 @@
 //   beforeX  for a downbeat: right edge of what sits right before it (barline, time signature,
 //            key signature, clef), undefined otherwise
 //   leftX    for a downbeat: its left edge, accidentals included (x when undefined)
-//   hasGroup true when the downbeat's bar starts with a time or key signature or a clef: the
-//            barline then moves alone, and the signature and the downbeat move as a group
+//   hasGroup true when the downbeat's bar starts with a time or key signature or a clef, or with a
+//            start repeat after an end repeat: the barline then moves alone, and the group with
+//            the downbeat
 //   groupX   left edge of that group's first segment
+//   groupGap where the barline goes before the group, in spatium (BARLINE_BEFORE_GROUP when undefined)
 //   leading  the point's own leading space
 // The grid of a list of points is the line through its first and last point.
 
@@ -28,6 +30,10 @@ var COLLAPSED_BARLINE_CLEARANCE = 0.5;
 var NOTE_AFTER_BARLINE = 0.4;  // spatium a downbeat keeps from the barline before it
 // spatium from a barline to the time or key signature or clef after it, about MuseScore's own
 var BARLINE_BEFORE_GROUP = 0.8;
+// spatium from an end repeat to the start repeat right after it, MuseScore's own ":||:"
+var END_REPEAT_BEFORE_START_REPEAT = 1.34;
+// spatium from the end of such a group to the left edge of the downbeat after it, about MuseScore's own
+var NOTE_AFTER_GROUP = 1.25;
 
 function slope(p) {
     var n = p.length - 1;
@@ -87,10 +93,13 @@ function tooDense(p) {
 // left until it is BARLINE_CLEARANCE from the previous note, then the downbeat closes in on
 // what sits right before it down to NOTE_AFTER_BARLINE. Whatever is left over cannot be had.
 //
-// When the downbeat's bar starts with a time or key signature or a clef (hasGroup), the barline's
-// leading space only moves the barline. The group's leading space then moves signature and
-// downbeat together instead, and the barline follows: it is put BARLINE_BEFORE_GROUP before the
-// group. Both measured on the current layout, so repeated passes settle them.
+// When the downbeat's bar starts with a time or key signature, a clef, or a start repeat after an end
+// repeat (hasGroup), the barline's leading space only moves the barline. The group's leading space
+// moves the group, and the downbeat with it only until MuseScore's minimum distance from the note
+// before stops the downbeat: past that, the group would run off and leave a hole before the downbeat.
+// So everything is placed from where the downbeat should go: the group NOTE_AFTER_GROUP before it,
+// the barline groupGap before the group, and the downbeat's own leading space makes up whatever the
+// group did not carry it. Measured on the current layout, so repeated passes settle them.
 //
 // collapse (keep bars) drops the clearances: the barline may go up to MuseScore's own limit after
 // the previous note, and the downbeat right up to the barline, onto any signature after it.
@@ -108,11 +117,12 @@ function splitGap(p, i, change, collapse) {
     // widen: first give the downbeat its normal distance back
     var back = change > 0 ? Math.min(change, Math.max(0, -p[i].leading)) : 0;
     if (p[i].hasGroup) {
-        var viaGroup = change > 0 ? change - back
-            : Math.max(change, -Math.max(0, p[i].groupX - BARLINE_BEFORE_GROUP - limit));
-        var noteMove = change > 0 ? back
-            : Math.max(change - viaGroup, -Math.max(0, left - before - noteAfter));
-        return { carrier: p[i].groupX + viaGroup - BARLINE_BEFORE_GROUP - cx, group: viaGroup, note: noteMove };
+        var gap = p[i].groupGap || BARLINE_BEFORE_GROUP, width = p[i].beforeX - p[i].groupX;
+        var groupTo = Math.max(p[i].leftX + change - NOTE_AFTER_GROUP - width, limit + gap);
+        // how far left the downbeat's left edge may go: onto the barline, or noteAfter after the group
+        var lowest = collapse ? groupTo - gap - (p[i].x - p[i].leftX) : groupTo + width + noteAfter;
+        var move = Math.max(change, Math.min(0, lowest - p[i].leftX)), groupMove = groupTo - p[i].groupX;
+        return { carrier: groupTo - gap - cx, group: groupMove, note: move - groupMove };
     }
     if (change > 0) {
         return { carrier: change - back, group: 0, note: back };
@@ -120,6 +130,25 @@ function splitGap(p, i, change, collapse) {
     var viaBarline = Math.max(change, -Math.max(0, cx - limit));
     var viaNote = Math.max(change - viaBarline, -Math.max(0, left - before - noteAfter));
     return { carrier: viaBarline, group: 0, note: viaNote };
+}
+
+// How far left the left edge of a downbeat may go with what sits before it where it is:
+// NOTE_AFTER_BARLINE after it, or with collapse until the note reaches the barline.
+function lowestNote(p, i, collapse) {
+    return collapse ? p[i].carrierX - (p[i].x - p[i].leftX) : p[i].beforeX + NOTE_AFTER_BARLINE;
+}
+
+// For a downbeat: how far its own leading space should move it to change the gap before it by
+// `change`, with what sits before it left where it is. Stops where splitGap would.
+function noteShift(p, i, change, collapse) {
+    return Math.max(change, Math.min(0, lowestNote(p, i, collapse) - p[i].leftX));
+}
+
+// True when a downbeat after a group can take a change of the gap before it by itself: it neither
+// runs into the group nor gets further from it than MuseScore would put it.
+function noteAlone(p, i, change, collapse) {
+    var to = p[i].leftX + change;
+    return to >= lowestNote(p, i, collapse) && to <= p[i].beforeX + NOTE_AFTER_GROUP;
 }
 
 // False when a barline (or anything else that sits between two notes) has been pushed out of

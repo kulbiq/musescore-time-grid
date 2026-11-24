@@ -54,7 +54,8 @@ function resetStretch(m) {
 // Changes the gap before point i by `change` spatium, as splitGap decides.
 // Returns false when the change is too small to act on. True does not mean anything was
 // written: across a barline there may be no room left.
-function applyGap(p, i, change, collapse) {
+// carrierOnly: leave a downbeat's own leading space alone, see sweep.
+function applyGap(p, i, change, collapse, carrierOnly) {
     var split = p[i].carrier ? splitGap(p, i, change, collapse) : null;
     if (!split) {
         return false;
@@ -68,7 +69,9 @@ function applyGap(p, i, change, collapse) {
     if (p[i].group) {
         add(p[i].group, split.group);
     }
-    add(p[i].seg, split.note);
+    if (!carrierOnly) {
+        add(p[i].seg, split.note);
+    }
     return true;
 }
 
@@ -88,13 +91,31 @@ function correct(sys, collapse) {
 // Slow but robust correction for a tightly packed system: fixes one gap at a time, left to
 // right, with a fresh layout after every change. In a tight system a carrier also changes the
 // gap after it, which makes correct() overshoot. Going in order absorbs that.
+// Before a downbeat, the barline or group moves first, and the downbeat's own leading space then
+// makes up what is measured to be left: how far the barline or group carries the downbeat along
+// depends on MuseScore's minimum distances, and past them it does not move at all. The line is
+// justified, so moving a group also shifts the downbeat the other way: a downbeat after a group
+// moves alone while it can, see noteAlone.
 // Returns the system's remaining error.
 function sweep(sys, relayout, collapse) {
     var p = sys.points;
     for (var round = 0; round < SWEEPS; round++) {
         for (var i = 1; i < p.length; i++) {
             snapshot(sys);
-            if (applyGap(p, i, gapError(p, i), collapse)) {
+            var change = gapError(p, i), downbeat = !p[i].sameBar && p[i].isNote;
+            if (!p[i].group || !noteAlone(p, i, change, collapse)) {
+                if (!applyGap(p, i, change, collapse, downbeat)) {
+                    continue;
+                }
+                relayout();
+                if (!downbeat) {
+                    continue;
+                }
+                change = gapError(snapshot(sys).points, i);
+            }
+            var rest = noteShift(p, i, change, collapse);
+            if (Math.abs(rest) > TOLERANCE / 4) {
+                p[i].seg.leadingSpace = Number(p[i].seg.leadingSpace) + rest;
                 relayout();
             }
         }

@@ -6,9 +6,10 @@
 //   seg      the note's segment, or the final barline for a closing point
 //   carrier  the segment right after the previous point: its leading space sets the gap
 //            between the previous point and this one. The note itself when sameBar.
-//   group    for a downbeat whose bar starts with a time signature, key signature or clef: that
-//            first segment of the bar. Its leading space moves the signature and the downbeat
-//            together, while the barline's own leading space would mostly just move the barline.
+//   group    for a downbeat whose bar starts with a time signature, key signature or clef, or with a
+//            start repeat right after an end repeat: that first segment of the bar. Its leading space
+//            moves the group and, up to MuseScore's minimum distances, the downbeat with it, while the
+//            barline's own leading space would mostly just move the barline.
 //   before   for a downbeat, the segment right before it: the barline, or a time signature,
 //            key signature or clef after the barline. Its right edge is the point's beforeX,
 //            the downbeat's own left edge, accidentals included, its leftX.
@@ -130,14 +131,19 @@ function snapshot(sys) {
 // ponytail: multimeasure rests are walked as their underlying bars, use nextMeasureMM if that matters.
 function collect(eng, range) {
     var score = eng.curScore, t0 = range.t0, t1 = range.t1;
-    var CR = eng.Segment.ChordRest, BAR = eng.Segment.EndBarLine;
+    var CR = eng.Segment.ChordRest, BAR = eng.Segment.EndBarLine, REPEAT = eng.Segment.StartRepeatBarLine;
     var systems = [], cur = null, barNo = 0, prev = null;
     function add(measure, seg, t, bar, isNote) {
         var c = cur.carrier, sameBar = !!c && c.is(seg);
         var before = isNote && !sameBar && prev && prev.segmentType !== CR ? prev : null;
-        var first = measure.firstSegment, group = before && !first.is(seg) && first.tick === seg.tick ? first : null;
+        // A start repeat after a plain barline stands where that barline is and moves with it, so it is
+        // no group. After an end repeat, the end repeat moves alone, and the start repeat is a group.
+        var first = measure.firstSegment, repeat = first.segmentType === REPEAT;
+        var group = before && !first.is(seg) && first.tick === seg.tick
+            && (!repeat || (measure.prevMeasure && measure.prevMeasure.repeatEnd)) ? first : null;
         cur.points.push({ t: t, seg: seg, carrier: c, before: before, group: group, bar: bar, isNote: isNote,
-                          sameBar: sameBar });
+                          sameBar: sameBar,
+                          groupGap: repeat ? END_REPEAT_BEFORE_START_REPEAT : BARLINE_BEFORE_GROUP });
         cur.carrier = null;
     }
     for (var m = score.firstMeasure; m; m = m.nextMeasure) {
