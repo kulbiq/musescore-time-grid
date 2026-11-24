@@ -18,6 +18,7 @@ ExtensionBlank {
     property int barCount: 1      // how many bars from its anchor bar the image should span
     property string status: ""
     property bool keepBars: false   // false: bars of a too dense system move to the next line
+    property bool helpShown: false
 
     readonly property var columns: [
         { title: Core.tr("Bars"), width: 76 },
@@ -101,11 +102,26 @@ ExtensionBlank {
         anchors.margins: 16
         spacing: 12
 
-        StyledTextLabel {
+        Item {
             width: parent.width
-            horizontalAlignment: Text.AlignLeft
-            font.bold: true
-            text: root.summary()
+            height: Math.max(summaryLabel.height, helpButton.height)
+
+            StyledTextLabel {
+                id: summaryLabel
+                width: parent.width - helpButton.width - 12
+                horizontalAlignment: Text.AlignLeft
+                wrapMode: Text.WordWrap
+                font.bold: true
+                text: root.summary()
+            }
+
+            FlatButton {
+                id: helpButton
+                anchors.right: parent.right
+                width: 30
+                text: "?"
+                onClicked: root.helpShown = true
+            }
         }
 
         Row {
@@ -149,15 +165,11 @@ ExtensionBlank {
 
             StyledTextLabel {
                 width: parent.width
+                visible: root.status !== ""
                 horizontalAlignment: Text.AlignLeft
                 wrapMode: Text.WordWrap
                 opacity: 0.7
-                text: root.status !== "" ? root.status
-                    : Core.tr("One row per system. From and To are measured from the left page edge: the first note of the row "
-                              + "and the point where its time span ends. Make linear sets the score's spacing ratio style to 2. "
-                              + "Unless bars are kept on their line, bars of a system that is too dense move to the next line. "
-                              + "To add an image, drag its file onto the bar it should start at, click it, and align it to its "
-                              + "whole system or to a number of bars.")
+                text: root.status
             }
 
             // Hand-drawn: MuseApi.Controls' CheckBox fails to load in MuseScore 4.7.7
@@ -268,6 +280,148 @@ ExtensionBlank {
                             : root.barCount === 1 ? Core.tr("Align to bar %1", root.image.bar)
                             : Core.tr("Align to bars %1", Core.barsLabel(root.image.bar, root.lastOfCount()))
                         onClicked: root.alignSelected(root.barCount)
+                    }
+                }
+            }
+        }
+    }
+
+    // Help, over the dialog: a figure of two bars spaced by this extension, with a picture aligned
+    // above them (tools/make_figure.py), and what the dialog does in a few lines.
+    Rectangle {
+        anchors.fill: parent
+        visible: root.helpShown
+        color: Qt.rgba(0, 0, 0, 0.45)
+
+        MouseArea {
+            anchors.fill: parent
+            onClicked: root.helpShown = false
+        }
+
+        Rectangle {
+            id: card
+            anchors.centerIn: parent
+            width: parent.width - 24
+            height: content.height + 32
+            radius: 6
+            color: api.theme.backgroundPrimaryColor
+            border.width: 1
+            border.color: Qt.rgba(api.theme.fontPrimaryColor.r, api.theme.fontPrimaryColor.g,
+                                  api.theme.fontPrimaryColor.b, 0.25)
+
+            MouseArea {   // keeps clicks on the card from closing it
+                anchors.fill: parent
+            }
+
+            Column {
+                id: content
+                x: 16
+                y: 16
+                width: parent.width - 32
+                spacing: 12
+
+                Item {
+                    width: parent.width
+                    height: closeButton.height
+
+                    StyledTextLabel {
+                        anchors.verticalCenter: parent.verticalCenter
+                        font.bold: true
+                        text: Core.tr("How it works")
+                    }
+
+                    FlatButton {
+                        id: closeButton
+                        anchors.right: parent.right
+                        text: Core.tr("Close")
+                        onClicked: root.helpShown = false
+                    }
+                }
+
+                // the figure on white, as the score shows in MuseScore, with the time grid drawn over it
+                Rectangle {
+                    width: parent.width
+                    height: figure.height + 2 * figure.y
+                    radius: 4
+                    color: "white"
+
+                    Image {
+                        id: figure
+                        x: 8
+                        y: 8
+                        width: parent.width - 2 * x
+                        height: width * Core.FIGURE.height / Core.FIGURE.width
+                        source: "figure.png"
+                        smooth: true
+                        mipmap: true
+
+                        function fx(f) { return f * width; }
+                        function fy(f) { return f * height; }
+                        function beatX(i) {
+                            var f = Core.FIGURE;
+                            return fx(f.from + (f.to - f.from) * i / f.beats);
+                        }
+
+                        Repeater {
+                            model: Core.FIGURE.beats + 1
+                            Rectangle {
+                                readonly property bool edge: index === 0 || index === Core.FIGURE.beats
+                                x: Math.round(figure.beatX(index) - width / 2)
+                                y: Math.round(figure.fy(Core.FIGURE.pictureTop)) - 4
+                                width: edge ? 2 : 1
+                                height: Math.round(figure.fy(Core.FIGURE.staffBottom)) + 4 - y
+                                color: api.theme.accentColor
+                                opacity: edge ? 1 : 0.45
+                            }
+                        }
+
+                        Text {
+                            x: Math.round(figure.beatX(0) - width / 2)
+                            y: Math.round(figure.fy(Core.FIGURE.staffBottom)) + 6
+                            color: api.theme.accentColor
+                            font.bold: true
+                            text: Core.tr("From")
+                        }
+
+                        Text {
+                            x: Math.round(figure.beatX(Core.FIGURE.beats)) - width
+                            y: Math.round(figure.fy(Core.FIGURE.staffBottom)) + 6
+                            color: api.theme.accentColor
+                            font.bold: true
+                            text: Core.tr("To")
+                        }
+                    }
+                }
+
+                Repeater {
+                    model: [
+                        Core.tr("Make linear puts every note of the selected bars on an even time grid (the thin lines, one "
+                                + "per beat): a note twice as long gets twice the room. It also sets the score's spacing "
+                                + "ratio style to 2, Reset all puts it back."),
+                        Core.tr("From and To, also in the table: a line's first note and the point where its time ends, "
+                                + "measured from the left page edge."),
+                        Core.tr("When a line is too dense for this, its last bars move to the next line, unless bars are "
+                                + "kept on their line."),
+                        Core.tr("To add a picture, drag its file onto the bar it should start at, click it and align it: "
+                                + "it then spans From to To, above the staff.")
+                    ]
+
+                    Row {
+                        width: parent.width
+                        spacing: 4
+
+                        StyledTextLabel {
+                            width: 16
+                            horizontalAlignment: Text.AlignLeft
+                            text: (index + 1) + "."
+                        }
+
+                        StyledTextLabel {
+                            width: parent.width - 20
+                            horizontalAlignment: Text.AlignLeft
+                            wrapMode: Text.WordWrap
+                            text: modelData
+                        }
                     }
                 }
             }

@@ -51,6 +51,14 @@
             "show_on_appmenu": false,
             "path": "core.js",
             "func": "edges"
+        },
+        {
+            "code": "figure",
+            "type": "macros",
+            "title": "Equal Spacing help figure (headless)",
+            "show_on_appmenu": false,
+            "path": "core.js",
+            "func": "figure"
         }
     ]
 }

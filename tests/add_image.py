@@ -15,10 +15,10 @@ import zlib
 BARS = (1, 15)
 
 
-def png(width, height):
-    """A plain RGB gradient, no dependencies."""
+def png(width, height, pixel=lambda x, y, width, height: (x * 255 // width, 80, 160)):
+    """An RGB picture, by default a plain gradient, no dependencies."""
     rows = b"".join(
-        b"\0" + b"".join(bytes((x * 255 // width, 80, 160)) for x in range(width)) for _ in range(height))
+        b"\0" + b"".join(bytes(pixel(x, y, width, height)) for x in range(width)) for y in range(height))
 
     def chunk(kind, data):
         return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data))
@@ -27,18 +27,18 @@ def png(width, height):
     return b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", header) + chunk(b"IDAT", zlib.compress(rows)) + chunk(b"IEND", b"")
 
 
-def add_images(mscx, image):
-    """Puts image into the first note of each bar in BARS, in the first staff."""
+def add_images(mscx, image, bars=BARS):
+    """Puts image into the first note of each bar in bars, in the first staff."""
     staff = mscx.index('<Staff id="1">', mscx.index("</Part>"))
     starts = [m.start() for m in re.finditer("<Measure", mscx[staff:])]
-    for bar in sorted(BARS, reverse=True):   # from the back, so earlier positions stay valid
+    for bar in sorted(bars, reverse=True):   # from the back, so earlier positions stay valid
         note = mscx.index("<Note>", staff + starts[bar - 1]) + len("<Note>")
         mscx = mscx[:note] + image + mscx[note:]
     return mscx
 
 
-def main(src, dst):
-    data = png(400, 50)
+def main(src, dst, bars=BARS, data=None):
+    data = data or png(400, 50)
     name = hashlib.new("md4", data).hexdigest() + ".png"   # MuseScore's image store finds pictures by MD4
     image = (f"<Image><path>{name}</path><size w='70' h='8.75'/>"
              "<lockAspectRatio>1</lockAspectRatio><sizeIsSpatium>0</sizeIsSpatium></Image>")
@@ -46,7 +46,7 @@ def main(src, dst):
         for item in zin.infolist():
             content = zin.read(item.filename)
             if item.filename.endswith(".mscx"):
-                content = add_images(content.decode(), image).encode()
+                content = add_images(content.decode(), image, bars).encode()
             zout.writestr(item, content)
         zout.writestr("Pictures/" + name, data)
 

@@ -18,6 +18,7 @@ Select some bars or a whole system, then open the dialog.
 The dialog lists one row per selected system: bars, start time, end time, duration, and the horizontal span in millimetres from the left page edge.
 "From" is the first note of the row and "To" is the point where the row's time span ends, so a scale drawn between them is exact.
 The dialog stays open and follows the selection.
+The ? button shows a short help, with a figure of two bars spaced by the extension and a picture aligned above them.
 
 - Make linear spaces the selection.
 - Reset removes the leading space, measure stretch and system locks from the selection.
@@ -32,9 +33,13 @@ The checkbox "Keep bars on their line" decides what happens then.
   The result is exact, but the systems change, and a system that gave up bars is locked so they stay off it.
 - Checked: the system is locked so every bar stays, and every note is put on the grid, however dense the bars are.
   Notes, accidentals, barlines and time or key signatures may run into each other: the barline may go right up to the note before it, and the downbeat right up to the barline.
-  This never gives up on a system: MuseScore keeps a barline a few tenths of a staff space after the note before it, so in the densest spots a note can stay up to about 0.1 mm off the grid, and the dialog says how much.
+  This never gives up on a system: MuseScore keeps a barline a few tenths of a staff space after the note before it, so in the densest spots a note can stay a few hundredths of a millimetre off the grid, and the dialog says how much.
 
 Systems that cannot be made linear with bars moving are left unchanged and named in the dialog.
+
+Time signature, key and clef changes, clef changes inside a bar, start and end repeats and accidentals in the middle of a line are taken into account: the barline, the signatures and the downbeat after them move together, and the downbeat stays on the grid.
+With bars moving, they keep their usual distances, and a line only gives up bars when they really do not fit.
+Wide changes, such as a new clef, key and time signature with a start repeat after a bar of eighths, usually do not fit on a line with linear spacing: that bar then starts the next line.
 
 ## Images
 
@@ -94,7 +99,8 @@ Every function in `src` therefore shares one global scope.
 - `image.js`: `selectedImage(eng)` and `alignImage(eng, image, barCount)`, plus `releaseImages` for Make linear.
 - `report.js`: what the dialog shows (`describe`, `barsLabel` and the status messages).
 - `i18n.js`: `tr` and `trn`, the translations of every text the dialog shows.
-- `selftest.js`: the headless actions `selftest`, `verify`, `all`, `keepAll` and `edges`.
+- `figure.js`: generated with `figure.png` by `tools/make_figure.py`, which has MuseScore and the extension render the help figure: where it shows what.
+- `selftest.js`: the headless actions `selftest`, `verify`, `all`, `keepAll`, `edges` and `figure`.
 
 `Main.qml` calls only these and the `*Message` functions: `selectedRange`, `selectedImage`, `describe`, `barsLabel`, `linearize`, `reset`, `resetAll` and `alignImage`.
 A range is `{ t0, t1 }` in ticks, a "system" is one system's part of the selection (one row in the dialog).

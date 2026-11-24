@@ -229,3 +229,25 @@ function edges() {
         throw new Error("equal_spacing edges FAILED");
     }
 }
+
+// Headless helper for tools/make_figure.py: spaces the score linearly, aligns the image on bar 1 to
+// the whole first system and logs where the figure in the dialog's help shows what, in spatium.
+//   mscore -j job.json --extension "musescore://extensions/equal_spacing?action=figure"
+function figure() {
+    var eng = api.engraving, score = eng.curScore, whole = wholeScore(score);
+    score.startCmd("Narrow page");   // a short line, so the staff is large in the small figure
+    score.style.setValue("pageWidth", 4.6);
+    score.style.setValue("pagePrintableWidth", 4);
+    score.endCmd();
+    linearize(eng, whole, { keepBars: false });
+    var img = imageOnBar(eng, 1);
+    alignImage(eng, img, 0);
+    var sys = collect(eng, whole)[0], p = sys.points, last = p[p.length - 1];
+    var line = sys.measures[0].firstSegment.parent.parent.pagePos;   // the system
+    var chord = score.findSegmentAtTick(eng.Segment.ChordRest, eng.fraction(p[0].t, WHOLE_TICKS)).elementAt(0);
+    api.log.info("equal_spacing figure: " + JSON.stringify({
+        mm: mmPerSpatium(score), left: line.x, from: p[0].x, to: last.x, beats: (last.t - p[0].t) / 480,
+        pictureTop: img.pagePos.y, pictureBottom: img.pagePos.y + img.bbox.height,
+        staffTop: chord.pagePos.y, staffBottom: chord.pagePos.y + 4
+    }));
+}
