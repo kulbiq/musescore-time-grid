@@ -1,5 +1,6 @@
 #!/bin/sh
-# Copies the extension into MuseScore Studio's user extensions folder (macOS).
+# Builds the extension into a folder: by default MuseScore Studio's extensions folder on macOS,
+# or the folder given as the first argument (tools/release.sh uses that).
 # MuseScore does not follow symlinks there, so re-run this after editing.
 #
 # core.js is loaded both by Main.qml (QML import) and by the macros actions in
@@ -7,7 +8,7 @@
 # time_grid/src are joined into the one core.js that both load.
 set -e
 src="$(dirname "$0")/time_grid"
-dest="$HOME/Library/Application Support/MuseScore/MuseScore4/extensions/time_grid"
+dest="${1:-$HOME/Library/Application Support/MuseScore/MuseScore4/extensions/time_grid}"
 rm -rf "$dest"
 mkdir -p "$dest"
 cp "$src/manifest.json" "$src"/*.qml "$src"/*.png "$dest/"

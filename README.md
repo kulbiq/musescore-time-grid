@@ -1,127 +1,68 @@
 # Time Grid
 
-A MuseScore Studio 4.7+ extension that puts the notes on an even time grid, and lines up a waveform or spectrogram picture with them.
+A MuseScore Studio extension that puts your notes on an even time grid, so a waveform or spectrogram of the recording lines up with the music.
 
-It spaces the selected bars linearly in time: every note in a system sits at `x = x0 + k * time`, so a linear time scale, a waveform or a spectrogram drawn above the system lines up with the music.
-Bars of equal duration come out equally wide.
-A barline takes its room from the time span of the note before it, so every downbeat stays on the grid.
+![Two bars spaced by Time Grid, with a waveform aligned above them](time_grid/figure.png)
+
+A note twice as long gets twice the room, and every beat is the same distance apart, across barlines too.
 
 ## Install
 
-Run `./install.sh` (macOS), then restart MuseScore.
-Enable the extension once in Home > Plugins.
-It then appears as Plugins > Time Grid > Time Grid.
-Re-run `./install.sh` and restart MuseScore after changing the code.
+You need MuseScore Studio 4.7 or newer.
+
+1. Download `time_grid-<version>.zip` from the [Releases](../../releases) page and unzip it.
+   You get a folder called `time_grid`.
+2. Open MuseScore's extensions folder:
+   - **macOS:** in Finder, choose Go > Go to Folder, paste `~/Library/Application Support/MuseScore/MuseScore4/extensions` and press Return.
+   - **Windows:** paste `%LOCALAPPDATA%\MuseScore\MuseScore4\extensions` into the File Explorer address bar and press Enter.
+   - **Linux:** open `~/.local/share/MuseScore/MuseScore4/extensions`.
+
+   If the `extensions` folder does not exist yet, create it.
+3. Move the `time_grid` folder into it.
+4. Restart MuseScore, go to Home > Plugins and enable **Time Grid**.
+
+To update, replace the `time_grid` folder with the new one and restart MuseScore.
 
 ## Use
 
-Select some bars or a whole system, then open the dialog.
-The dialog lists one row per selected system: bars, start time, end time, duration, and the horizontal span in millimetres from the left page edge.
-"From" is the first note of the row and "To" is the point where the row's time span ends, so a scale drawn between them is exact.
-The dialog stays open and follows the selection.
-The ? button shows a short help, with a figure of two bars spaced by the extension and a picture aligned above them.
+Open it from Plugins > Time Grid.
+The window stays open and follows what you select in the score.
+The **?** button shows a short help.
 
-- Make linear spaces the selection.
-- Reset removes the leading space, measure stretch and system locks from the selection.
-- Reset all puts the whole score back as it was before the first Make linear: no leading space or measure stretch, the old spacing ratio, and your own system locks.
-  Images stay where they are.
-- Click an image instead of bars to align it, see Images.
+- **Make linear:** select some bars or whole systems and press it.
+- **Keep bars on their line:** when a line is too dense for even spacing, its last bars normally move to the next line.
+  Check this to keep them; notes and signatures may then overlap.
+- **Reset** undoes the selection, **Reset all** puts the whole score back as it was.
 
-A system can be too dense to be linear: a short note would get less room than MuseScore's minimum note distance.
-The checkbox "Keep bars on their line" decides what happens then.
+The table shows, for each line, when it starts and ends and where (From and To, in millimetres from the left page edge).
 
-- Unchecked (default): the last bars of that system move to the next line until the rest fits.
-  The result is exact, but the systems change, and a system that gave up bars is locked so they stay off it.
-- Checked: the system is locked so every bar stays, and every note is put on the grid, however dense the bars are.
-  Notes, accidentals, barlines and time or key signatures may run into each other: the barline may go right up to the note before it, and the downbeat right up to the barline.
-  This never gives up on a system: MuseScore keeps a barline a few tenths of a staff space after the note before it, so in the densest spots a note can stay a few hundredths of a millimetre off the grid, and the dialog says how much.
+### Waveforms and spectrograms
 
-Systems that cannot be made linear with bars moving are named in the dialog and keep no spacing adjustments.
+1. Drag the picture file onto the bar where it should start.
+2. Click the picture.
+3. Press **Align to whole system**, or pick a number of bars and press **Align to bars**.
 
-Time signature, key and clef changes, clef changes inside a bar, start and end repeats and accidentals in the middle of a line are taken into account: the barline, the signatures and the downbeat after them move together, and the downbeat stays on the grid.
-With bars moving, they keep their usual distances, and a line only gives up bars when they really do not fit.
-Wide changes, such as a new clef, key and time signature with a start repeat after a bar of eighths, usually do not fit on a line with linear spacing: that bar then starts the next line.
+The picture is scaled to run exactly from the first note to the end of those bars, just above the staff.
+Space the bars first: after changing the spacing, align the picture again.
+If the picture runs into the line above, add space above the staff, for example with a staff spacer.
 
-## Images: waveforms and spectrograms
+### Good to know
 
-MuseScore does not let extensions load picture files, so the image comes in through MuseScore itself: drag the image file onto the bar where it should start (or copy the picture and paste it onto a selected note).
-The bar it lands in is its anchor bar.
-Click the image, and the dialog offers two ways to align it:
+- Make linear sets the score's spacing ratio (Format > Style) to 2 and locks systems, so the rest of the score keeps its layout.
+  Reset all restores both.
+- Times ignore repeats.
+- On a long score, work a few systems at a time: the whole score is laid out again on every pass.
+- The window speaks English and Polish, following MuseScore's language.
 
-- Align to whole system: the image spans the system its anchor bar is in.
-- Align to bars: the image spans the number of bars set with the minus and plus buttons, starting at its anchor bar, up to the end of the system.
+## For developers
 
-The image is scaled, keeping its proportions, to span exactly From to To of those bars: from their first note to the point where their time span ends.
-It sits 1 staff space above the staff, or above the highest note if that is higher.
-
-- A freshly dropped image takes part in automatic placement: MuseScore counts it as part of its note and pushes the following notes, sometimes whole bars, out from under it.
-  Align and Make linear both turn that off for the images they touch, before they measure anything.
-- MuseScore does not make room above the staff for an image.
-  If it runs into the system above, add space with a staff spacer or in the staff properties.
-- Make linear and Reset do not move images: align an image again after changing the spacing.
-
-## Languages
-
-The dialog speaks English and Polish, following MuseScore's language (Preferences > General > Language).
-MuseScore cannot load an extension's own translation files, so the texts live in `time_grid/src/i18n.js`, keyed by their English text, and the extension picks them by the language MuseScore sets for Qt.
-To add a language, add its table and plural rule there; `node --test tests/*.test.js` then reports every text still missing.
-The menu entry "Time Grid" stays English: `manifest.json` titles cannot be translated.
-
-## What it changes in the score
-
-- Style > Measure > Spacing ratio is set to 2 for the whole score, which makes note spacing proportional to duration.
-  This also changes the look of bars outside the selection.
-  Reset does not restore it, because other linearized passages depend on it, Reset all does.
-- The first time, the old spacing ratio and your system locks are recorded in the score's properties (`equalSpacingOriginal`), for Reset all.
-- Images in the selection stop taking part in automatic placement.
-- Leading space of segments in the selection is overwritten.
-- Measure stretch in the selection is set back to 1.
-- System locks on the selected systems are set (bars kept) or removed (bars may move), including locks you set yourself.
-  When bars move, the systems they moved off are locked again.
-- The first time it runs on a score, every other system is locked too.
-  Otherwise the style change would reflow the whole score.
-  Reset all removes them again.
-
-Times ignore repeats.
-Multimeasure rests are not handled specially.
-Every pass lays out the whole score, so running it on all of a long score at once is slow: work a few systems at a time.
-
-## Code
-
-MuseScore loads `core.js` twice: in the dialog (`Main.qml` imports it) and in the headless macros actions listed in `manifest.json`.
-The two loaders cannot load sibling files the same way, so `install.sh` joins the files in `time_grid/src` into the one installed `core.js`.
-Every function in `src` therefore shares one global scope.
-
-- `grid.js`: the grid math, pure, on plain points.
-  It never touches MuseScore objects.
-- `layout.js`: reads the layout into points, and is the only file that reads `pagePos`.
-  Points are a snapshot: after any `doLayout`, call `snapshot(sys)` or `collect()` again.
-- `linearize.js`: `linearize(eng, range, { keepBars })`, `reset(eng, range)` and `resetAll(eng)`.
-- `image.js`: `selectedImage(eng)` and `alignImage(eng, image, barCount)`, plus `releaseImages` for Make linear.
-- `report.js`: what the dialog shows (`describe`, `barsLabel` and the status messages).
-- `i18n.js`: `tr` and `trn`, the translations of every text the dialog shows.
-- `figure.js`: generated with `figure.png` by `tools/make_figure.py`, which has MuseScore and the extension render the help figure: where it shows what.
-- `selftest.js`: the headless actions `selftest`, `verify`, `all`, `keepAll`, `edges` and `figure`.
-
-`Main.qml` calls only these and the `*Message` functions: `selectedRange`, `selectedImage`, `describe`, `barsLabel`, `linearize`, `reset`, `resetAll` and `alignImage`.
-A range is `{ t0, t1 }` in ticks, a "system" is one system's part of the selection (one row in the dialog).
-
-## Test
-
-`node --test tests/*.test.js` checks the grid math and the translations in a fraction of a second, without MuseScore.
-
-`tests/run.sh` runs those, then runs the extension through the real MuseScore binary on a generated score.
-It checks both modes: with bars kept, no bar may change system and every note, the dense bar's too, must be within 0.02 staff spaces of the grid.
-With bars allowed to move, every note must be within 0.01 staff spaces, also after saving and reloading the file.
-The test score also has freshly dropped images on the first notes of bars 1 and 15, the dense one (`tests/add_image.py`).
-Both are aligned before the spacing runs and must span their bars within 0.01 staff spaces; the spacing must then give the same results as without them.
-After the reload, Reset all must restore the score, and Make linear must work on bars whose image was just dropped, and on a line with a time signature change in its middle, without the downbeat running into the signature.
-Then it runs Make linear with bars kept on `tests/gui.mscz`, a score saved from MuseScore's own window: no system may be left unchanged, and every note must be within 0.02 staff spaces.
-Last comes a score of what sits between notes in the middle of a line (`tests/make_edge_score.py`): time signature, key and clef changes, a clef change inside a bar, start and end repeats, a ":||:", chords full of accidentals and double sharps and flats.
-In both modes every note must be on the grid and, with bars moving, no barline or signature out of its place.
-Two bars that fit on one line, with a time signature, a clef, a start repeat or a ":||:" between them, must stay on that line.
-Before and after PNGs are written to `tests/out`.
+- `./install.sh` builds the extension into MuseScore's extensions folder (macOS).
+  The files in `time_grid/src` are joined into one `core.js`.
+- `node --test tests/*.test.js` runs the unit tests, `tests/run.sh` the end-to-end tests in the real MuseScore.
+- `tools/release.sh` builds the release zip, `tools/make_figure.py` the help figure.
+- How it works is described at the top of each file in `time_grid/src`, starting with `linearize.js`.
+- Translations live in `time_grid/src/i18n.js`; the unit tests report every missing text.
 
 ## License
 
-GPL-3.0, like MuseScore itself: see `LICENSE`.
+GPL-3.0, like MuseScore itself: see [LICENSE](LICENSE).
