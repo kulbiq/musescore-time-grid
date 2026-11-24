@@ -135,6 +135,20 @@ function verify() {
     api.log.info("equal_spacing verify: dropped image " + JSON.stringify(dropped) + " err=" + droppedError.toFixed(4)
                  + " autoplace=" + img.autoplace + " systems=" + pushed + " -> " + systemsOf(eng));
     var droppedOk = dropped.failed.length === 0 && droppedError < TOLERANCE && !img.autoplace;
+
+    // a time signature change in the middle of a line, between bars 8 and 9: barline, signature and
+    // downbeat must move together, and the downbeat must not end up under the signature
+    var sigBars = barsRange(score, 8, 9);
+    score.startCmd("Bars 8 and 9 on one line");
+    score.makeIntoSystem(score.tick2measure(eng.fraction(sigBars.t0, WHOLE_TICKS)),
+                         score.tick2measure(eng.fraction(barTick(score, 9), WHOLE_TICKS)));
+    score.endCmd();
+    var sig = linearize(eng, sigBars, { keepBars: true });
+    var sigLine = collect(eng, sigBars), sigError = maxError(sigLine);
+    var sigFits = sigLine.length === 1 && barlinesFit(sigLine[0].points);
+    api.log.info("equal_spacing verify: time signature mid-line " + JSON.stringify(sig) + " err=" + sigError.toFixed(4)
+                 + " fits=" + sigFits + " systems=" + systemsOf(eng));
+    droppedOk = droppedOk && sig.failed.length === 0 && sigError < TOLERANCE && sigFits;
     if (!(err < TOLERANCE && imgError < TOLERANCE && resetOk && droppedOk)) {
         throw new Error("equal_spacing verify FAILED");
     }

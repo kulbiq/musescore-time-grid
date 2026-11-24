@@ -9,6 +9,12 @@
 //            and the one before it, so a single leading space sets the gap
 //   bar      bar number, used to compare gaps within one bar
 //   carrierX page position of the carrier (see layout.js), equal to x when sameBar
+//   beforeX  for a downbeat: right edge of what sits right before it (barline, time signature,
+//            key signature, clef), undefined otherwise
+//   leftX    for a downbeat: its left edge, accidentals included (x when undefined)
+//   hasGroup true when the downbeat's bar starts with a time or key signature or a clef: the
+//            barline then moves alone, and the signature and the downbeat move as a group
+//   groupX   left edge of that group's first segment
 //   leading  the point's own leading space
 // The grid of a list of points is the line through its first and last point.
 
@@ -19,6 +25,8 @@ var KEEP_BARS_TOLERANCE = 0.1;
 var DENSE_SLACK = 0.05;        // spatium
 var BARLINE_CLEARANCE = 1.5;   // spatium a barline keeps from the start of the note before it
 var NOTE_AFTER_BARLINE = 0.4;  // spatium a downbeat keeps from the barline before it
+// spatium from a barline to the time or key signature or clef after it, about MuseScore's own
+var BARLINE_BEFORE_GROUP = 0.8;
 
 function slope(p) {
     var n = p.length - 1;
@@ -68,41 +76,58 @@ function tooDense(p) {
     return false;
 }
 
-// Splits a change of the gap before point i (spatium, negative = narrower) between the two
-// leading spaces that set it. Returns { carrier, note }: what to add to each,
-// or null when the change is too small to act on.
+// Splits a change of the gap before point i (spatium, negative = narrower) between the leading
+// spaces that set it. Returns { carrier, group, note }: what to add to each, or null when the
+// change is too small to act on.
+//
 // Inside a bar the carrier is the note itself. Across a barline there are two handles:
 // the barline's leading space moves barline and downbeat together, and the downbeat's own
 // leading space moves it relative to the barline. To narrow the gap, the barline first moves
 // left until it is BARLINE_CLEARANCE from the previous note, then the downbeat closes in on
-// the barline down to NOTE_AFTER_BARLINE. Whatever is left over cannot be had.
+// what sits right before it down to NOTE_AFTER_BARLINE. Whatever is left over cannot be had.
+//
+// When the downbeat's bar starts with a time or key signature or a clef (hasGroup), the barline's
+// leading space only moves the barline. The group's leading space then moves signature and
+// downbeat together instead, and the barline follows: it is put BARLINE_BEFORE_GROUP before the
+// group. Both measured on the current layout, so repeated passes settle them.
 function splitGap(p, i, change) {
     if (Math.abs(change) <= TOLERANCE / 4) {
         return null;
     }
     if (p[i].sameBar || !p[i].isNote) {  // same bar, or the closing point is the final barline
-        return { carrier: change, note: 0 };
+        return { carrier: change, group: 0, note: 0 };
+    }
+    var cx = p[i].carrierX, limit = p[i - 1].x + BARLINE_CLEARANCE;
+    var before = p[i].beforeX === undefined ? cx : p[i].beforeX;
+    var left = p[i].leftX === undefined ? p[i].x : p[i].leftX;
+    // widen: first give the downbeat its normal distance back
+    var back = change > 0 ? Math.min(change, Math.max(0, -p[i].leading)) : 0;
+    if (p[i].hasGroup) {
+        var viaGroup = change > 0 ? change - back
+            : Math.max(change, -Math.max(0, p[i].groupX - BARLINE_BEFORE_GROUP - limit));
+        var noteMove = change > 0 ? back
+            : Math.max(change - viaGroup, -Math.max(0, left - before - NOTE_AFTER_BARLINE));
+        return { carrier: p[i].groupX + viaGroup - BARLINE_BEFORE_GROUP - cx, group: viaGroup, note: noteMove };
     }
     if (change > 0) {
-        // widen: first give the downbeat its normal distance back, then move the barline
-        var back = Math.min(change, Math.max(0, -p[i].leading));
-        return { carrier: change - back, note: back };
+        return { carrier: change - back, group: 0, note: back };
     }
-    var cx = p[i].carrierX;
-    var viaBarline = Math.max(change, -Math.max(0, cx - (p[i - 1].x + BARLINE_CLEARANCE)));
-    var viaNote = Math.max(change - viaBarline, -Math.max(0, p[i].x - cx - NOTE_AFTER_BARLINE));
-    return { carrier: viaBarline, note: viaNote };
+    var viaBarline = Math.max(change, -Math.max(0, cx - limit));
+    var viaNote = Math.max(change - viaBarline, -Math.max(0, left - before - NOTE_AFTER_BARLINE));
+    return { carrier: viaBarline, group: 0, note: viaNote };
 }
 
 // False when a barline (or anything else that sits between two notes) has been pushed out of
-// its place: onto the note before it or past the downbeat after it.
+// its place: onto the note before it or past the downbeat after it, or when the downbeat has
+// run into what sits right before it, such as a time signature.
 function barlinesFit(p) {
     for (var i = 1; i < p.length; i++) {
         if (p[i].sameBar) {
             continue;
         }
         var x = p[i].carrierX;
-        if (x < p[i - 1].x + BARLINE_CLEARANCE - 0.01 || x > p[i].x) {
+        if (x < p[i - 1].x + BARLINE_CLEARANCE - 0.01 || x > p[i].x || p[i].leftX < p[i].beforeX - 0.01
+                || x > p[i].groupX - BARLINE_BEFORE_GROUP / 2) {
             return false;
         }
     }

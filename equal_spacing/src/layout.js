@@ -6,6 +6,12 @@
 //   seg      the note's segment, or the final barline for a closing point
 //   carrier  the segment right after the previous point: its leading space sets the gap
 //            between the previous point and this one. The note itself when sameBar.
+//   group    for a downbeat whose bar starts with a time signature, key signature or clef: that
+//            first segment of the bar. Its leading space moves the signature and the downbeat
+//            together, while the barline's own leading space would mostly just move the barline.
+//   before   for a downbeat, the segment right before it: the barline, or a time signature,
+//            key signature or clef after the barline. Its right edge is the point's beforeX,
+//            the downbeat's own left edge, accidentals included, its leftX.
 
 var WHOLE_TICKS = 1920;   // MuseScore division is 480 ticks per quarter
 
@@ -90,11 +96,28 @@ function selectedRange(eng) {
     return a === null ? null : { t0: a, t1: b };
 }
 
+// Page x of the left or right edge of what a segment shows on any staff, accidentals included.
+function edge(seg, ntracks, right) {
+    var x = seg.pagePos.x;
+    for (var track = 0; track < ntracks; track++) {
+        var e = seg.elementAt(track);
+        if (e) {
+            var b = e.bbox, ex = e.pagePos.x + b.x + (right ? b.width : 0);
+            x = right ? Math.max(x, ex) : Math.min(x, ex);
+        }
+    }
+    return x;
+}
+
 // Re-reads the positions of a system's points from the live layout.
 function snapshot(sys) {
     sys.points.forEach(function (pt) {
         pt.x = pt.seg.pagePos.x;
         pt.carrierX = pt.carrier ? pt.carrier.pagePos.x : undefined;
+        pt.beforeX = pt.before ? edge(pt.before, sys.ntracks, true) : undefined;
+        pt.leftX = pt.before ? edge(pt.seg, sys.ntracks, false) : undefined;
+        pt.groupX = pt.group ? edge(pt.group, sys.ntracks, false) : undefined;
+        pt.hasGroup = !!pt.group;
         pt.leading = Number(pt.seg.leadingSpace);
     });
     return sys;
@@ -108,10 +131,13 @@ function snapshot(sys) {
 function collect(eng, range) {
     var score = eng.curScore, t0 = range.t0, t1 = range.t1;
     var CR = eng.Segment.ChordRest, BAR = eng.Segment.EndBarLine;
-    var systems = [], cur = null, barNo = 0;
-    function add(seg, t, bar, isNote) {
-        var c = cur.carrier;
-        cur.points.push({ t: t, seg: seg, carrier: c, bar: bar, isNote: isNote, sameBar: !!c && c.is(seg) });
+    var systems = [], cur = null, barNo = 0, prev = null;
+    function add(measure, seg, t, bar, isNote) {
+        var c = cur.carrier, sameBar = !!c && c.is(seg);
+        var before = isNote && !sameBar && prev && prev.segmentType !== CR ? prev : null;
+        var first = measure.firstSegment, group = before && !first.is(seg) && first.tick === seg.tick ? first : null;
+        cur.points.push({ t: t, seg: seg, carrier: c, before: before, group: group, bar: bar, isNote: isNote,
+                          sameBar: sameBar });
         cur.carrier = null;
     }
     for (var m = score.firstMeasure; m; m = m.nextMeasure) {
@@ -126,7 +152,8 @@ function collect(eng, range) {
             break;
         }
         if (!closing && (!cur || cur.key !== key)) {
-            cur = { key: key, firstBar: barNo, lastBar: barNo, points: [], measures: [], closed: false, carrier: null, barline: null };
+            cur = { key: key, firstBar: barNo, lastBar: barNo, points: [], measures: [], closed: false, carrier: null,
+                    barline: null, ntracks: score.ntracks };
             systems.push(cur);
         }
         if (!closing) {
@@ -141,11 +168,12 @@ function collect(eng, range) {
             if (type === BAR) {
                 cur.barline = s;
             } else if (type === CR) {
-                add(s, s.tick, barNo, true);
+                add(m, s, s.tick, barNo, true);
                 if (closing) {
                     break;
                 }
             }
+            prev = s;
         }
         if (closing) {
             cur.closed = true;
@@ -154,7 +182,7 @@ function collect(eng, range) {
         var next = m.nextMeasure;
         if ((!next || sysKey(next) !== key) && cur.barline && cur.points.length) {
             // system ends here: the final barline stands in for the next downbeat
-            add(cur.barline, me, undefined, false);
+            add(m, cur.barline, me, undefined, false);
             cur.closed = true;
             cur.endsSystem = true;
         }

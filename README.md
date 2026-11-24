@@ -29,7 +29,7 @@ A system can be too dense to be linear: a short note would get less room than Mu
 The checkbox "Keep bars on their line" decides what happens then.
 
 - Unchecked (default): the last bars of that system move to the next line until the rest fits.
-  The result is exact, but the systems change.
+  The result is exact, but the systems change, and a system that gave up bars is locked so they stay off it.
 - Checked: the system is locked so every bar stays, and notes are put on the grid anyway.
   Notes and accidentals can end up closer than MuseScore normally allows.
   The barline moves up to the previous note and the downbeat moves up to the barline.
@@ -63,8 +63,9 @@ It sits 1 staff space above the staff, or above the highest note if that is high
 - The first time, the old spacing ratio and your system locks are recorded in the score's properties (`equalSpacingOriginal`), for Reset all.
 - Images in the selection stop taking part in automatic placement.
 - Leading space of segments in the selection is overwritten.
-- Measure stretch in the selection is overwritten.
+- Measure stretch in the selection is set back to 1.
 - System locks on the selected systems are set (bars kept) or removed (bars may move), including locks you set yourself.
+  When bars move, the systems they moved off are locked again.
 - The first time it runs on a score, every other system is locked too.
   Otherwise the style change would reflow the whole score.
   Reset all removes them again.

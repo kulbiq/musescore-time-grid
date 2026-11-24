@@ -39,7 +39,7 @@ test("a gap MuseScore widened beyond its share is too dense", () => {
 
 test("splitGap inside a bar uses the note's own leading space", () => {
     const p = points([[0, 0], [480, 4]]);
-    assert.deepStrictEqual({ ...grid.splitGap(p, 1, -1) }, { carrier: -1, note: 0 });
+    assert.deepStrictEqual({ ...grid.splitGap(p, 1, -1) }, { carrier: -1, group: 0, note: 0 });
     assert.strictEqual(grid.splitGap(p, 1, 0.001), null);   // below tolerance
 });
 
@@ -64,4 +64,32 @@ test("barlinesFit catches a barline on the note before it or past the downbeat",
     assert.strictEqual(grid.barlinesFit(at(3)), true);
     assert.strictEqual(grid.barlinesFit(at(1)), false);
     assert.strictEqual(grid.barlinesFit(at(4.5)), false);
+});
+
+test("splitGap moves a time signature and its downbeat as a group, the barline follows", () => {
+    // previous note at 0, barline at 10, time signature from 10.8, downbeat at 13
+    const p = points([[0, 0], [480, 13]],
+        [{}, { sameBar: false, hasGroup: true, carrierX: 10, groupX: 10.8, beforeX: 12.5, leftX: 13 }]);
+    const r = grid.splitGap(p, 1, -3);
+    assert.ok(Math.abs(r.group + 3) < 1e-12);
+    assert.ok(Math.abs(r.note) < 1e-12);
+    assert.ok(Math.abs(r.carrier + 3) < 1e-12);   // barline stays 0.8 before the group
+});
+
+test("splitGap stops the group where the barline reaches the previous note", () => {
+    const p = points([[0, 0], [480, 13]],
+        [{}, { sameBar: false, hasGroup: true, carrierX: 10, groupX: 10.8, beforeX: 12.5, leftX: 13 }]);
+    // group may move until the barline is 1.5 after the note: 10.8 - 0.8 - 1.5 = 8.5,
+    // then the downbeat closes in on the signature: 13 - 12.5 - 0.4 = 0.1
+    const r = grid.splitGap(p, 1, -20);
+    assert.ok(Math.abs(r.group + 8.5) < 1e-12);
+    assert.ok(Math.abs(r.note + 0.1) < 1e-12);
+    assert.ok(Math.abs(r.carrier + 8.5) < 1e-12);
+});
+
+test("barlinesFit catches a downbeat under a time signature", () => {
+    const at = (leftX) => points([[0, 0], [480, 13]],
+        [{}, { sameBar: false, hasGroup: true, carrierX: 10, groupX: 10.8, beforeX: 12.5, leftX }]);
+    assert.strictEqual(grid.barlinesFit(at(13)), true);
+    assert.strictEqual(grid.barlinesFit(at(12)), false);
 });

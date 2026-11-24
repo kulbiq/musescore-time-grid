@@ -12,16 +12,15 @@
 //    gap's measured error back into it and re-layout until it is gone.
 // 3. A system can be too dense for this: a short note would get less room than MuseScore's
 //    minimum distance. There are two ways out, chosen by the caller:
-//    - move bars: raise the bars' stretch until MuseScore moves the system's last bar to the
-//      next line, and repeat until the rest fits. Exact, but systems change.
+//    - move bars: lock the system to all but its last bar, so that bar moves to the next line,
+//      and repeat until the rest fits. Exact, but systems change and stay locked.
 //    - keep bars: lock the system so its bars stay, and put the notes on the grid anyway,
 //      closer than the minimum distance. Notes can overlap.
 //
 // The geometry is in grid.js, reading the layout in layout.js. This file writes to the score.
 
 var PASSES = 4;            // whole-system passes before falling back to sweeps
-var STRETCH_STEP = 1.15, MAX_STRETCH = 10;   // 10 is MuseScore's own limit
-var MAX_ROUNDS = 400;      // bar-moving rounds, each moves at most one bar per system
+var MAX_ROUNDS = 400;      // bar-moving rounds, each moves bars off one system
 var SWEEPS = 6;            // one-gap-at-a-time sweeps for tightly packed systems
 
 function eachMeasure(score, range, fn) {
@@ -66,6 +65,9 @@ function applyGap(p, i, change) {
         }
     }
     add(p[i].carrier, split.carrier);
+    if (p[i].group) {
+        add(p[i].group, split.group);
+    }
     add(p[i].seg, split.note);
     return true;
 }
@@ -104,35 +106,24 @@ function sweep(sys, relayout) {
     return gridError(p);
 }
 
-// Makes room in the given systems by raising the stretch of their bars.
-// Stretch scales all springs alike, so it cannot make a fixed set of bars linear by itself:
-// what it does is grow the bars until MuseScore moves the system's last bar to the next line.
-// That last bar is therefore set back to stretch 1, so it arrives on its new system unstretched.
-// Returns false when nothing could be raised any further.
-function widen(systems) {
-    var changed = false;
-    function set(m, v) {
-        if (m.userStretch !== v) {
-            m.userStretch = v;
-            changed = true;
+// Moves bars of the first of the given systems that has any to spare to the next line, by locking
+// that system to fewer bars: all but its last bar, or, when the range ends before the system
+// does, the bars in the range. The bars after them flow on to the following lines.
+// One system at a time, in score order: locking a later line too would strand the bar moved off
+// an earlier one on a line of its own. And unlike raising the measure stretch, a lock leaves every
+// spring as it was, so the lines stay in proportion.
+// Returns false when no system had bars to move.
+function moveBars(score, systems) {
+    for (var i = 0; i < systems.length; i++) {
+        var ms = systems[i].measures, keep = systems[i].endsSystem ? ms.length - 1 : ms.length;
+        if (keep >= 1) {
+            // unlock first: shrinking a lock would make MuseScore lock the bars it leaves on their own
+            ms[0].parent.isLocked = false;
+            score.makeIntoSystem(ms[0], ms[keep - 1]);
+            return true;
         }
     }
-    systems.forEach(function (sys) {
-        var ms = sys.measures;
-        var evict = sys.endsSystem && ms.length > 1;
-        var keep = evict ? ms.length - 1 : ms.length;
-        var top = 0, i;
-        for (i = 0; i < keep; i++) {
-            top = Math.max(top, ms[i].userStretch);
-        }
-        for (i = 0; i < keep; i++) {
-            set(ms[i], Math.min(top * STRETCH_STEP, MAX_STRETCH));
-        }
-        if (evict) {
-            set(ms[keep], 1);
-        }
-    });
-    return changed;
+    return false;
 }
 
 // One attempt at the current system layout. Lays out, then corrects every system that is not
@@ -195,17 +186,18 @@ function linearize(eng, range, options) {
         sys.measures[0].parent.isLocked = keepBars;
     });
     eachMeasure(score, range, resetStretch);
+    // when bars may move, systems that are too dense are not corrected: their bars move instead
+    function skipDense(sys, pass) {
+        if (pass === 0) {
+            dense[sys.firstBar] = !keepBars && tooDense(sys.points);
+        }
+        return dense[sys.firstBar];
+    }
     for (var round = 0; round < (keepBars ? 1 : MAX_ROUNDS); round++) {
         clearLeading(score, range);
-        // when bars may move, systems that are too dense are not corrected but widened
-        systems = attempt(eng, range, relayout, function (sys, pass) {
-            if (pass === 0) {
-                dense[sys.firstBar] = !keepBars && tooDense(sys.points);
-            }
-            return dense[sys.firstBar];
-        });
+        systems = attempt(eng, range, relayout, skipDense);
         var bad = systems.filter(function (sys) { return sys.error >= tolerance; });
-        if (keepBars || !bad.length || !widen(bad)) {
+        if (keepBars || !bad.length || !moveBars(score, bad)) {
             break;
         }
     }
