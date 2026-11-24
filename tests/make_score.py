@@ -73,6 +73,7 @@ def main(path, repeats=1):
         run(3, 2),
         [note("E", 5, 4, "quarter", 1)] * 3,
     ]
+    # bars 1-14, then the dense 16ths bar is bar 15 (DENSE_BAR in selftest.js)
     bars = ([(b, 4) for b in four * 2] + [(b, 3) for b in three * 2] + [(b, 4) for b in four_with(4)]) * repeats
 
     parts = []
