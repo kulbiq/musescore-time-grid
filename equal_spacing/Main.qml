@@ -2,7 +2,7 @@ import QtQuick
 
 import MuseApi.Controls
 
-import "core.js" as Core
+import "core.js" as Core   // built by install.sh from src/*.js
 
 ExtensionBlank {
     id: root
