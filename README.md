@@ -1,5 +1,7 @@
 # Time Grid
 
+[![Tests](https://github.com/kulbiq/musescore-time-grid/actions/workflows/tests.yml/badge.svg)](https://github.com/kulbiq/musescore-time-grid/actions/workflows/tests.yml)
+
 A MuseScore Studio extension that puts your notes on an even time grid, so a waveform or spectrogram of the recording lines up with the music.
 
 ![Two bars spaced by Time Grid, with a waveform aligned above them](time_grid/figure.png)
@@ -52,6 +54,7 @@ If the picture runs into the line above, add space above the staff, for example 
 - `./install.sh` builds the extension into MuseScore's extensions folder (macOS).
   The files in `time_grid/src` are joined into one `core.js`.
 - `node --test tests/*.test.js` runs the unit tests, `tests/run.sh` the end-to-end tests in the real MuseScore.
+  GitHub Actions runs both on every push, the end-to-end tests on macOS with the MuseScore version set in `.github/workflows/tests.yml`.
 - `tools/release.sh` builds the release file, a zip with `manifest.json` at its root named `.mext`, which MuseScore installs when it is dropped on its window.
   `tools/make_figure.py` renders the help figure.
 - How it works is described at the top of each file in `time_grid/src`, starting with `linearize.js`.

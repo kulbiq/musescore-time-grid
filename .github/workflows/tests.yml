@@ -1,0 +1,51 @@
+name: Tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: node --test tests/*.test.js
+
+  # The extension in the real MuseScore Studio, the same version as it is developed with.
+  end-to-end:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    env:
+      MUSESCORE_TAG: v4.7.7
+      MUSESCORE_DMG: MuseScore-Studio-4.7.7.261109195.dmg
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: actions/cache@v4
+        with:
+          path: ${{ env.MUSESCORE_DMG }}
+          key: ${{ env.MUSESCORE_DMG }}
+      - name: Download MuseScore Studio
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download "$MUSESCORE_TAG" --repo musescore/MuseScore --pattern checksums.sha256.txt --clobber
+          test -f "$MUSESCORE_DMG" || gh release download "$MUSESCORE_TAG" --repo musescore/MuseScore --pattern "$MUSESCORE_DMG"
+          grep " $MUSESCORE_DMG\$" checksums.sha256.txt | shasum -a 256 -c -
+      - name: Install MuseScore Studio
+        run: |
+          hdiutil attach -nobrowse -quiet -mountpoint /Volumes/MuseScore "$MUSESCORE_DMG"
+          cp -R /Volumes/MuseScore/*.app "$RUNNER_TEMP/MuseScore.app"
+          hdiutil detach -quiet /Volumes/MuseScore
+          echo "MSCORE=$RUNNER_TEMP/MuseScore.app/Contents/MacOS/mscore" >> "$GITHUB_ENV"
+      - run: tests/run.sh
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: end-to-end-output
+          path: tests/out
