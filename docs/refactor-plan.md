@@ -1,5 +1,15 @@
 # Refactor plan: Equal Spacing
 
+**Status: done (steps 0-7).**
+The selftest numbers are identical to the baseline after every step.
+Differences from the plan below:
+
+- Steps 3 and 4 went in as one commit, because the pure functions need the snapshot fields (`carrierX`, `leading`).
+- `grid.js` has `gapError(points, i)` instead of `gapErrors(points)`, and `splitGap(points, i, change)` and `barlinesFit(points)` read from the points.
+- `sweep` skips the re-layout when a gap change writes nothing, which does not change any result.
+- `selectedRange` and `resultMessage` take `eng` like the rest.
+- The selftest now also runs `describe` and `resultMessage`, so the dialog's core calls are covered headless.
+
 Goal: make the plugin easier to change without changing what it does.
 Every step is a pure move, checked by `tests/run.sh`.
 Vocabulary follows the codebase-design glossary: module, interface, seam, adapter, depth.
