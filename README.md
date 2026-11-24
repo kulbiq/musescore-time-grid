@@ -56,8 +56,10 @@ MuseScore loads `core.js` twice: in the dialog (`Main.qml` imports it) and in th
 The two loaders cannot load sibling files the same way, so `install.sh` joins the files in `equal_spacing/src` into the one installed `core.js`.
 Every function in `src` therefore shares one global scope.
 
-- `grid.js`: the grid math, pure, on plain points. It never touches MuseScore objects.
-- `layout.js`: reads the layout into points. The only file that reads `pagePos`. Points are a snapshot: after any `doLayout`, call `snapshot(sys)` or `collect()` again.
+- `grid.js`: the grid math, pure, on plain points.
+  It never touches MuseScore objects.
+- `layout.js`: reads the layout into points, and is the only file that reads `pagePos`.
+  Points are a snapshot: after any `doLayout`, call `snapshot(sys)` or `collect()` again.
 - `linearize.js`: `linearize(eng, range, { keepBars })` and `reset(eng, range)`, the only functions that change the score.
 - `report.js`: what the dialog shows (`describe`, `barsLabel`, `resultMessage`).
 - `selftest.js`: the headless actions `selftest`, `verify` and `all`.

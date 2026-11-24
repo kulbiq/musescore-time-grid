@@ -40,7 +40,7 @@ test("a gap MuseScore widened beyond its share is too dense", () => {
 test("splitGap inside a bar uses the note's own leading space", () => {
     const p = points([[0, 0], [480, 4]]);
     assert.deepStrictEqual({ ...grid.splitGap(p, 1, -1) }, { carrier: -1, note: 0 });
-    assert.deepStrictEqual({ ...grid.splitGap(p, 1, 0.001) }, { carrier: 0, note: 0 });   // below tolerance
+    assert.strictEqual(grid.splitGap(p, 1, 0.001), null);   // below tolerance
 });
 
 test("splitGap narrows across a barline only down to the clearances", () => {

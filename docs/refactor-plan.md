@@ -6,8 +6,11 @@ Differences from the plan below:
 
 - Steps 3 and 4 went in as one commit, because the pure functions need the snapshot fields (`carrierX`, `leading`).
 - `grid.js` has `gapError(points, i)` instead of `gapErrors(points)`, and `splitGap(points, i, change)` and `barlinesFit(points)` read from the points.
-- `sweep` skips the re-layout when a gap change writes nothing, which does not change any result.
+- `splitGap` returns null for a change too small to act on, so `sweep` re-lays out under exactly the old condition.
 - `selectedRange` and `resultMessage` take `eng` like the rest.
+- Visible change: the dialog's summary line now reads "Bars 3" for a single bar instead of "Bars 3-3".
+- `describe` rows lost the unused `error` field.
+- The selftest log says `keepBars=` instead of `squeeze=`.
 - The selftest now also runs `describe` and `resultMessage`, so the dialog's core calls are covered headless.
 
 Goal: make the plugin easier to change without changing what it does.

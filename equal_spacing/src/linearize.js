@@ -53,12 +53,13 @@ function resetStretch(m) {
 }
 
 // Changes the gap before point i by `change` spatium, as splitGap decides.
-// Returns true when anything was written.
+// Returns false when the change is too small to act on. True does not mean anything was
+// written: across a barline there may be no room left.
 function applyGap(p, i, change) {
-    if (!p[i].carrier) {
+    var split = p[i].carrier ? splitGap(p, i, change) : null;
+    if (!split) {
         return false;
     }
-    var split = splitGap(p, i, change);
     function add(seg, v) {
         if (v !== 0) {
             seg.leadingSpace = Number(seg.leadingSpace) + v;
@@ -66,7 +67,7 @@ function applyGap(p, i, change) {
     }
     add(p[i].carrier, split.carrier);
     add(p[i].seg, split.note);
-    return split.carrier !== 0 || split.note !== 0;
+    return true;
 }
 
 // Fast correction of a whole system at once: feeds each gap's error into its carrier.

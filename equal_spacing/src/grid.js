@@ -69,7 +69,8 @@ function tooDense(p) {
 }
 
 // Splits a change of the gap before point i (spatium, negative = narrower) between the two
-// leading spaces that set it. Returns { carrier, note }: what to add to each.
+// leading spaces that set it. Returns { carrier, note }: what to add to each,
+// or null when the change is too small to act on.
 // Inside a bar the carrier is the note itself. Across a barline there are two handles:
 // the barline's leading space moves barline and downbeat together, and the downbeat's own
 // leading space moves it relative to the barline. To narrow the gap, the barline first moves
@@ -77,7 +78,7 @@ function tooDense(p) {
 // the barline down to NOTE_AFTER_BARLINE. Whatever is left over cannot be had.
 function splitGap(p, i, change) {
     if (Math.abs(change) <= TOLERANCE / 4) {
-        return { carrier: 0, note: 0 };
+        return null;
     }
     if (p[i].sameBar || !p[i].isNote) {  // same bar, or the closing point is the final barline
         return { carrier: change, note: 0 };

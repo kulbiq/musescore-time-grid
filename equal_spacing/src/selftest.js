@@ -32,9 +32,9 @@ function selftest() {
 
     // keep bars: no bar may change system, the bars before the dense one must be linear
     var systems = systemsOf(eng);
-    var sq = linearize(eng, whole, { keepBars: true });
-    var sqError = maxError(collect(eng, beforeDense));
-    var sqSystems = systemsOf(eng);
+    var kept = linearize(eng, whole, { keepBars: true });
+    var keptError = maxError(collect(eng, beforeDense));
+    var keptSystems = systemsOf(eng);
 
     // move bars: everything must be linear, and the dense system must have lost bars
     var mv = linearize(eng, whole, { keepBars: false });
@@ -42,10 +42,10 @@ function selftest() {
     var mvSystems = systemsOf(eng);
 
     api.log.info("equal_spacing selftest: before=" + before.toFixed(3) + "sp partial=" + JSON.stringify(part)
-                 + " squeeze=" + JSON.stringify(sq) + " err=" + sqError.toFixed(4) + " systems=" + systems + " -> " + sqSystems
+                 + " keepBars=" + JSON.stringify(kept) + " err=" + keptError.toFixed(4) + " systems=" + systems + " -> " + keptSystems
                  + " move=" + JSON.stringify(mv) + " err=" + mvError.toFixed(4) + " systems=" + mvSystems);
     var ok = before > 1 && part.failed.length === 0 && part.error < TOLERANCE
-        && sqError < KEEP_BARS_TOLERANCE && sqSystems === systems
+        && keptError < KEEP_BARS_TOLERANCE && keptSystems === systems
         && mv.failed.length === 0 && mvError < TOLERANCE && mvSystems !== systems;
 
     // what the dialog shows: one row per system, each moving forward in time and space
