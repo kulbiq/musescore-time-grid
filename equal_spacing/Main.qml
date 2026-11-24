@@ -12,7 +12,7 @@ ExtensionBlank {
 
     color: api.theme.backgroundPrimaryColor
 
-    property var range: null      // { t0, t1 } of the selection, snapped to whole bars
+    property var range: null      // { t0, t1, staff } of the selection, snapped to whole bars
     property var rows: []         // one entry per selected system, see Core.describe
     property string status: ""
     property bool keepBars: false   // false: bars of a too dense system move to the next line
@@ -42,7 +42,8 @@ ExtensionBlank {
 
     function refresh(force) {
         var next = Core.selectedRange(api.engraving);
-        var same = (!next && !range) || (next && range && next.t0 === range.t0 && next.t1 === range.t1);
+        var same = (!next && !range)
+                || (next && range && next.t0 === range.t0 && next.t1 === range.t1 && next.staff === range.staff);
         if (same && !force) {
             return;
         }
@@ -129,7 +130,9 @@ ExtensionBlank {
                     : "One row per system. From and To are measured from the left page edge: "
                       + "the first note of the row and the point where its time span ends. "
                       + "Make linear sets the score's spacing ratio style to 2. Unless bars are kept on their line, "
-                      + "bars of a system that is too dense move to the next line."
+                      + "bars of a system that is too dense move to the next line. "
+                      + "To add an image, drag its file onto a note of the system, select that system's bars "
+                      + "on one staff and press Align image: it then spans From to To above the staff."
             }
 
             // Hand-drawn: MuseApi.Controls' CheckBox fails to load in MuseScore 4.7.7
@@ -186,6 +189,15 @@ ExtensionBlank {
                         Core.reset(api.engraving, root.range);
                         root.refresh(true);
                         root.status = "Removed the spacing adjustments from the selection.";
+                    }
+                }
+
+                FlatButton {
+                    text: "Align image"
+                    enabled: root.rows.length === 1
+                    onClicked: {
+                        var res = Core.alignImages(api.engraving, root.range);
+                        root.status = Core.alignMessage(res);
                     }
                 }
             }

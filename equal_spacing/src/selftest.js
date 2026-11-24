@@ -22,8 +22,31 @@ function systemsOf(eng) {
     }).join(" ");
 }
 
+// How far, in spatium, the image on the first system is from where alignImages puts it:
+// from the first note to the end of the system's time span, IMAGE_GAP above the staff.
+// tests/add_image.py attaches it to the first note.
+function imageError(eng) {
+    var sys = collect(eng, wholeScore(eng.curScore))[0], p = sys.points;
+    var found = findImages(eng, sys, 0), img = found.images[0];
+    if (found.images.length !== 1) {
+        return Infinity;
+    }
+    var x = img.pagePos.x, y = img.pagePos.y, b = img.bbox;
+    return Math.max(Math.abs(x - p[0].x), Math.abs(x + b.width - p[p.length - 1].x),
+                    Math.abs(y + b.height - (found.top - IMAGE_GAP)));
+}
+
+function firstSystemRange(eng) {
+    var ms = collect(eng, wholeScore(eng.curScore))[0].measures, last = ms[ms.length - 1];
+    return { t0: ms[0].tick.ticks, t1: last.tick.ticks + last.ticks.ticks, staff: 0 };
+}
+
 function selftest() {
     var eng = api.engraving, score = eng.curScore, whole = wholeScore(score);
+
+    // align the image tests/add_image.py put on the first note first: everything after must
+    // come out exactly as on a score without it
+    var firstAlign = alignImages(eng, firstSystemRange(eng));
     var beforeDense = { t0: 0, t1: barTick(score, DENSE_BAR) };
     var before = maxError(collect(eng, beforeDense));
 
@@ -55,6 +78,13 @@ function selftest() {
     ok = ok && rows.length === mvSystems.split(" ").length && rows.every(function (r) {
         return r.x1Mm > r.x0Mm && r.end > r.start;
     });
+
+    // bars moved, so align again: the image must span the first system exactly, above the staff
+    var aligned = alignImages(eng, firstSystemRange(eng));
+    var imgError = imageError(eng);
+    api.log.info("equal_spacing image: " + JSON.stringify(aligned) + " error=" + imgError.toFixed(4) + "sp"
+                 + " status=" + alignMessage(aligned));
+    ok = ok && firstAlign.aligned === 1 && aligned.aligned === 1 && imgError < TOLERANCE;
     if (!ok) {
         throw new Error("equal_spacing selftest FAILED");
     }
@@ -64,9 +94,10 @@ function selftest() {
 // to prove the spacing survives a save and reload.
 function verify() {
     var eng = api.engraving;
-    var err = maxError(collect(eng, wholeScore(eng.curScore)));
+    var err = maxError(collect(eng, wholeScore(eng.curScore))), imgError = imageError(eng);
     api.log.info("equal_spacing verify: reloaded error=" + err.toFixed(4) + "sp");
-    if (!(err < TOLERANCE)) {
+    api.log.info("equal_spacing verify: reloaded image error=" + imgError.toFixed(4) + "sp");
+    if (!(err < TOLERANCE && imgError < TOLERANCE)) {
         throw new Error("equal_spacing verify FAILED");
     }
 }

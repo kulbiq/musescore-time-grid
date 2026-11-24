@@ -20,7 +20,8 @@ function sysKey(measure) {
 }
 
 // Expands the current score's range selection to whole bars.
-// Returns { t0, t1 } in ticks, or null when there is no score or no range selection.
+// Returns { t0, t1, staff }: ticks, and the top selected staff.
+// null when there is no score or no range selection.
 function selectedRange(eng) {
     var score = eng.curScore;
     var sel = score && score.selection;
@@ -41,7 +42,7 @@ function selectedRange(eng) {
             break;
         }
     }
-    return a === null ? null : { t0: a, t1: b };
+    return a === null ? null : { t0: a, t1: b, staff: sel.startStaff };
 }
 
 // Re-reads the positions of a system's points from the live layout.

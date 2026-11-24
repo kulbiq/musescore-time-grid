@@ -55,3 +55,17 @@ function resultMessage(eng, result) {
     var off = (result.error * mmPerSpatium(eng.curScore)).toFixed(2);
     return "Done. Every note in the selection is within " + off + " mm of a linear time grid.";
 }
+
+// The status line after Align image, from the result of alignImages.
+function alignMessage(result) {
+    if (!result.firstBar) {
+        return "Select bars of a single system to align an image to.";
+    }
+    var bars = "bars " + barsLabel(result.firstBar, result.lastBar);
+    if (!result.aligned) {
+        return "No image on the selected staff in " + bars + ". Drag an image file onto a note there, "
+            + "then press Align image again.";
+    }
+    return (result.aligned === 1 ? "Image" : result.aligned + " images") + " aligned to " + bars
+        + ": from the first note to the end of the time span, above the staff.";
+}

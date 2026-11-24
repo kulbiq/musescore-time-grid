@@ -10,7 +10,8 @@ out="$PWD/tests/out"
 rm -rf "$out" && mkdir -p "$out"
 ./install.sh >/dev/null
 python3 tests/make_score.py "$out/test.musicxml"
-"$M" -o "$out/before.mscz" "$out/test.musicxml" >/dev/null 2>&1
+"$M" -o "$out/plain.mscz" "$out/test.musicxml" >/dev/null 2>&1
+python3 tests/add_image.py "$out/plain.mscz" "$out/before.mscz"
 echo "[{\"in\":\"$out/before.mscz\",\"out\":\"$out/after.mscz\"}]" > "$out/job.json"
 "$M" -j "$out/job.json" --extension "musescore://extensions/equal_spacing?action=selftest" >/dev/null 2>&1 || true
 echo "[{\"in\":\"$out/after.mscz\",\"out\":\"$out/reloaded.mscz\"}]" > "$out/job2.json"

@@ -21,6 +21,7 @@ The dialog stays open and follows the selection.
 
 - Make linear spaces the selection.
 - Reset removes the leading space, measure stretch and system locks from the selection.
+- Align image fits an image to one system, so it lines up with the music in time.
 
 A system can be too dense to be linear: a short note would get less room than MuseScore's minimum note distance.
 The checkbox "Keep bars on their line" decides what happens then.
@@ -33,6 +34,19 @@ The checkbox "Keep bars on their line" decides what happens then.
   If a bar ends on a note too short to leave room for a barline at all, the system is left unchanged.
 
 Systems that cannot be made linear either way are left unchanged and named in the dialog.
+
+## Images
+
+MuseScore does not let extensions load picture files, so the image comes in through MuseScore itself: drag the image file onto a note of the system (or copy the picture and paste it onto a selected note).
+Then select that system's bars on one staff and press Align image.
+The image is scaled, keeping its proportions, to span exactly From to To: from the first note to the point where the system's time span ends.
+It sits 1 staff space above the staff, or above the highest note if that is higher.
+
+- Align image turns off the image's automatic placement.
+  Otherwise MuseScore counts the image as part of its note and pushes the following notes out from under it.
+- MuseScore does not make room above the staff for an image.
+  If it runs into the system above, add space with a staff spacer or in the staff properties.
+- Make linear and Reset leave images alone: press Align image again after changing the spacing.
 
 ## What it changes in the score
 
@@ -61,11 +75,12 @@ Every function in `src` therefore shares one global scope.
 - `layout.js`: reads the layout into points, and is the only file that reads `pagePos`.
   Points are a snapshot: after any `doLayout`, call `snapshot(sys)` or `collect()` again.
 - `linearize.js`: `linearize(eng, range, { keepBars })` and `reset(eng, range)`, the only functions that change the score.
-- `report.js`: what the dialog shows (`describe`, `barsLabel`, `resultMessage`).
+- `image.js`: `alignImages(eng, range)`, the Align image button.
+- `report.js`: what the dialog shows (`describe`, `barsLabel`, `resultMessage`, `alignMessage`).
 - `selftest.js`: the headless actions `selftest`, `verify` and `all`.
 
-`Main.qml` only calls `selectedRange`, `describe`, `barsLabel`, `linearize`, `reset` and `resultMessage`.
-A range is `{ t0, t1 }` in ticks, a "system" is one system's part of the selection (one row in the dialog).
+`Main.qml` only calls `selectedRange`, `describe`, `barsLabel`, `linearize`, `reset`, `alignImages`, `resultMessage` and `alignMessage`.
+A range is `{ t0, t1, staff }`: ticks and the top selected staff, a "system" is one system's part of the selection (one row in the dialog).
 
 ## Test
 
@@ -74,4 +89,6 @@ A range is `{ t0, t1 }` in ticks, a "system" is one system's part of the selecti
 `tests/run.sh` runs those, then runs the extension through the real MuseScore binary on a generated score.
 It checks both modes: with bars kept, no bar may change system and the notes must be within 0.1 staff spaces of the grid.
 With bars allowed to move, every note must be within 0.01 staff spaces, also after saving and reloading the file.
+The test score also has an image on its first note (`tests/add_image.py`).
+It is aligned before the spacing runs, which must then give the same results as without it, and aligned again at the end, where it must span the first system within 0.01 staff spaces.
 Before and after PNGs are written to `tests/out`.
